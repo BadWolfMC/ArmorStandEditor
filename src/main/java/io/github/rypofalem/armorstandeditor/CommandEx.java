@@ -29,15 +29,15 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-public class CommandEx implements CommandExecutor {
+public final class CommandEx implements CommandExecutor {
   ArmorStandEditorPlugin plugin;
-  final String LISTMODE = ChatColor.GREEN + "/ase mode <" + Util.getEnumList(EditMode.class) + ">";
-  final String LISTAXIS = ChatColor.GREEN + "/ase axis <" + Util.getEnumList(Axis.class) + ">";
-  final String LISTADJUSTMENT = ChatColor.GREEN + "/ase adj <" + Util.getEnumList(AdjustmentMode.class) + ">";
-  final String LISTSLOT = ChatColor.GREEN + "/ase slot <1-9>";
-  final String HELP = ChatColor.GREEN + "/ase help";
+  protected static final String LISTMODE = ChatColor.GREEN + "/ase mode <" + Util.getEnumList(EditMode.class) + ">";
+  protected static final String LISTAXIS = ChatColor.GREEN + "/ase axis <" + Util.getEnumList(Axis.class) + ">";
+  protected static final String LISTADJUSTMENT = ChatColor.GREEN + "/ase adj <" + Util.getEnumList(AdjustmentMode.class) + ">";
+  protected static final String LISTSLOT = ChatColor.GREEN + "/ase slot <1-9>";
+  protected static final String HELP = ChatColor.GREEN + "/ase help";
 
-  public CommandEx(ArmorStandEditorPlugin armorStandEditorPlugin) {
+  public CommandEx(final ArmorStandEditorPlugin armorStandEditorPlugin) {
     this.plugin = armorStandEditorPlugin;
   }
 
@@ -48,7 +48,6 @@ public class CommandEx implements CommandExecutor {
       sender.sendMessage(plugin.getLang().getMessage("noperm", "warn"));
       return true;
     }
-
     Player player = (Player) sender;
     if (args.length == 0) {
       player.sendMessage(LISTMODE);
@@ -160,7 +159,7 @@ public class CommandEx implements CommandExecutor {
   private void commandHelp(Player player) {
     player.closeInventory();
     player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1 f, 1 f);
-    player.sendMessage(plugin.getLang().getMessage("help", "info", plugin.editTool.name()));
+    player.sendMessage(plugin.getLang().getMessage("help", "info"));
     player.sendMessage("");
     player.sendMessage(plugin.getLang().getMessage("helptips", "info"));
     player.sendMessage("");
