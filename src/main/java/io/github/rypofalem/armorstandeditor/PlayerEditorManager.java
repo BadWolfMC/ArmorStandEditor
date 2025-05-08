@@ -54,6 +54,8 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacy;
 import static net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText;
 
 //Manages PlayerEditors and Player Events related to editing armorstands
@@ -115,35 +117,35 @@ public class PlayerEditorManager implements Listener {
     //Attempt rename
     if (player.getInventory().getItemInMainHand().getType() == Material.NAME_TAG && player.hasPermission("asedit.rename")) {
       ItemStack nameTag = player.getInventory().getItemInMainHand();
-      final String name;
+      Component displayName;
       if (nameTag.getItemMeta() != null && nameTag.getItemMeta().hasDisplayName()) {
+        String name = plainText().serialize(nameTag.getItemMeta().displayName());
+        if (name != null && player.hasPermission("asedit.rename.color")) {
+          displayName = legacy('&').deserialize(name);
+        } else {
+          displayName = Component.text(name);
+        }
         name = nameTag.getItemMeta().getDisplayName().replace('&', ChatColor.COLOR_CHAR);
       } else {
-        name = null;
+        displayName  = null;
       }
 
-      if (name == null) {
-        as.setCustomName(null);
+      if (displayName  == null) {
+        as.customName(null);
         as.setCustomNameVisible(false);
         event.setCancelled(true);
-      } else if (!name.equals("")) { // nametag is not blank
+      } else {
         event.setCancelled(true);
-
         if ((player.getGameMode() != GameMode.CREATIVE)) {
-          if (nameTag.getAmount() > 1) {
-            nameTag.setAmount(nameTag.getAmount() - 1);
-          } else {
-            nameTag = new ItemStack(Material.AIR);
-          }
-          player.getInventory().setItemInMainHand(nameTag);
+          nameTag.subtract(1);
         }
-
         //minecraft will set the name after this event even if the event is cancelled.
         //change it 1 tick later to apply formatting without it being overwritten
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-          as.setCustomName(name);
-          as.setCustomNameVisible(true);
-        }, 1);
+        final Component finalDisplayName = displayName;
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            as.customName(finalDisplayName);
+            as.setCustomNameVisible(true);
+          });
       }
     }
   }
