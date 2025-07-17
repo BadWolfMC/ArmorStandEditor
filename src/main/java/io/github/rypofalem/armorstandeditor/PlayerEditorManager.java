@@ -225,13 +225,26 @@ public class PlayerEditorManager implements Listener {
   @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
   void onRightClickTool(PlayerInteractEvent e) {
     if (!(e.getAction() == Action.LEFT_CLICK_AIR ||
-        e.getAction() == Action.RIGHT_CLICK_AIR ||
-        e.getAction() == Action.LEFT_CLICK_BLOCK ||
-        e.getAction() == Action.RIGHT_CLICK_BLOCK)) return;
+          e.getAction() == Action.RIGHT_CLICK_AIR ||
+          e.getAction() == Action.LEFT_CLICK_BLOCK ||
+          e.getAction() == Action.RIGHT_CLICK_BLOCK)) return;
+
     Player player = e.getPlayer();
     if (!plugin.isEditTool(player.getInventory().getItemInMainHand())) return;
-    e.setCancelled(true);
-    getPlayerEditor(player.getUniqueId()).openMenu();
+
+    // Only proceed if the player is allowed to use the tool
+    if (player.hasPermission("asedit.use")) {
+        // Case 1: targeting an ArmorStand they can edit → handled elsewhere
+        Entity target = player.getTargetEntity(5);
+        if (target instanceof ArmorStand && canEdit(player, (ArmorStand) target)) {
+            // Let the other handlers take care of that interaction
+            return;
+        }
+
+        // Case 2: not targeting anything special → open the menu
+        e.setCancelled(true);
+        getPlayerEditor(player.getUniqueId()).openMenu();
+    }
   }
 
   @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
