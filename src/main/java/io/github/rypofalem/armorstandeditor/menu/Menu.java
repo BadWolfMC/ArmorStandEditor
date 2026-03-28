@@ -24,6 +24,7 @@ import io.github.rypofalem.armorstandeditor.PlayerEditor;
 import java.util.ArrayList;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
+import static net.kyori.adventure.text.format.TextColor.color;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -213,7 +214,7 @@ public class Menu {
   private ItemStack createIcon(ItemStack icon, String path, String command, String option) {
     ItemMeta meta = icon.getItemMeta();
     meta.getPersistentDataContainer().set(ArmorStandEditorPlugin.instance().getIconKey(), PersistentDataType.STRING, "ase " + command);
-    meta.displayName(text(getIconName(path, option)));
+    meta.displayName(text(getIconName(path, option)).color(TextColor.color(0xFFFFFF)));
     ArrayList < Component > loreList = new ArrayList < > ();
     loreList.add(text(getIconDescription(path, option)));
     meta.lore(loreList);
