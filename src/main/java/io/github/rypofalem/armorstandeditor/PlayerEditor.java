@@ -30,7 +30,6 @@ import io.github.rypofalem.armorstandeditor.modes.EditMode;
 import java.util.ArrayList;
 import java.util.UUID;
 
-import net.md_5.bungee.api.ChatMessageType;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
