@@ -1,3 +1,20 @@
+# IDE and local workspace files
 .idea/
-target/
 *.iml
+.vscode/
+
+# Gradle output and local caches
+build/
+.gradle/
+out/
+
+# Historical Maven output from the source archive
+target/
+
+# Local project archives (use git add -f for intentional archives)
+*.zip
+*.patch
+
+# Verification helper cache
+__pycache__/
+*.pyc
