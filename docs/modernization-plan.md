@@ -5,10 +5,13 @@
 > remove this plan and the companion regression checklist after the modernization
 > project is finished. Keep the concise, permanent history in `changelog.md`.
 
-**Status:** Phase 0 complete (production baseline confirmed); Phase 1 migration
-prepared on `develop`, pending GitHub Actions and in-game acceptance. The
-standard Wrapper JAR must still be committed after fetching its checksum-verified
-published binary; see `README.md`. Phases 2–7 not started.
+**Status:** Phase 0 complete (production baseline confirmed); **Phase 1 complete
+on `develop` (2026-10-30)**. Gradle CI and CodeQL passed; the checksum-verified
+Gradle Wrapper JAR is present in the repository; the Gradle-built plugin loaded
+and basic editing worked on a test server (reported by BadWolfMC administration).
+The full gameplay regression suite was not repeated for this build-only phase;
+affected cases will be tested during subsequent phases, with full coverage at
+Phase 7. Phases 2–7 not started. `main` remains the stable reference pending merge.
 **Baseline:** BadWolfMC fork of RypoFalem/ArmorStandEditor; source archive reviewed
 2026-10-30; baseline `develop` commit `09da6ec` (also `main` in the supplied
 archive). Phase 0 Maven CI produced `armorstandeditor-26.3.jar` as an artifact,
@@ -111,12 +114,22 @@ checklist are documented. Existing production JAR remains available as fallback.
 - Update CI on `develop` and `main` (including pull requests), Dependabot,
   CodeQL configuration as appropriate, and artifact publishing. Avoid duplicate
   or misleading artifact paths.
-- Build, inspect the packaged JAR, and rerun baseline smoke checks.
+- Build and inspect the packaged JAR, then perform a focused runtime load/edit
+  smoke check. Defer the full regression checklist until behavior-changing
+  phases and the final release gate.
 
-**Exit (not yet signed off):** Gradle CI build/release artifact works and
-matches intended Maven functionality; download, validate and commit the official
-Wrapper JAR to `develop`; confirm the Gradle build in Actions and run the Paper
-26.3 smoke tests. No intentional gameplay changes.
+**Exit (accepted 2026-10-30 on `develop`):** GitHub Actions successfully built
+`armorstandeditor-26.3.jar` using Gradle 9.8.2 and Java 25. The dynamic
+`26.3.build.+` Paper dependency resolved to `26.3.build.231-stable` in this
+build (recorded for troubleshooting, **not** pinned). The automated JAR verifier
+passed for Java 25 bytecode, packaged resources, and `plugin.yml` version `26.3`.
+The `package` artifact retained the downloadable `package.zip` convention.
+CodeQL passed (operator confirmed). The official Gradle Wrapper JAR was
+checksum-verified and added to the repository. The test-server plugin loaded
+and basic editing worked (operator confirmed; precise Paper build not separately
+recorded). No Java gameplay or resource source files were changed; this is a
+build/packaging equivalence check, **not** a claim that every gameplay scenario
+was retested. `main` is not marked merged by this closeout.
 
 ### Phase 2 — Flint interactions and authorization
 
@@ -186,10 +199,10 @@ remove these temporary planning/checklist files when their work is complete.
 
 ## Open verification points (not settled implementation facts)
 
-- **Phase 0 resolved:** Original Maven `plugin.yml` included the unresolved
+- **Phases 0–1 resolved:** Original Maven `plugin.yml` included an unresolved
   `${project.version}` token; the legacy CI `dist` upload used a nonexistent
   `target/armorstandeditor.jar` path. Phase 1 uses targeted Gradle resource
-  expansion and one artifact upload; CI verification remains pending.
+  expansion and one verified artifact upload; Gradle and CodeQL CI passed.
 - Which permission nodes are relied upon by BadWolfMC permission groups,
   especially `asedit.use` versus `asedit.basic`? Avoid quietly changing grants.
 - What is the safest way to recognize editor-owned Glowing without removing

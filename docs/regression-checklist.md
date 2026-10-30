@@ -92,17 +92,29 @@ steps and compare to the baseline before filing a regression.
 
 ## Build and release checks (Phases 1 and 7)
 
-Phase 1 static build/CI configuration inspection is complete. The following are
-**still unverified** until a live Actions run; the official checksum-verified
-Wrapper JAR should then be committed, and the in-game check follows. The artifact
-`package.zip` is produced by GitHub's download UI for the `package` artifact.
+**Phase 1 accepted on `develop` (2026-10-30):** Gradle CI and CodeQL passed.
+The official Wrapper JAR is present and its published SHA-256 was verified.
+GitHub's `package` artifact downloads as `package.zip`, containing
+`armorstandeditor-26.3.jar`. Only a **focused load/basic-edit smoke test** was
+performed in game; the complete Phase 0 checklist was not rerun because no
+Java gameplay code or source resources changed. The exact test-server Paper
+build was not independently recorded. Full regression remains a Phase 7 gate.
 
-- [ ] Gradle wrapper build succeeds on Java 25 against `26.3.build.+`.
-- [ ] Packaged `plugin.yml` has the intended, resolved plugin version.
-- [ ] CI runs on `develop` and `main` and appropriate pull requests.
-- [ ] Artifacts, Dependabot and CodeQL paths are correct after Maven removal.
-- [ ] Release JAR tested in a disposable Paper 26.3 environment.
-- [ ] Changelog includes only completed changes; remaining issues clearly noted.
+- [x] Gradle 9.8.2 Wrapper builds on Java 25 against `26.3.build.+`;
+      this CI run selected `26.3.build.231-stable` (not pinned).
+- [x] The packaged JAR passes automated descriptor, resource, and Java 25
+      bytecode checks; packaged `plugin.yml` reports version `26.3`.
+- [x] Gradle CI and CodeQL passed on `develop` (operator confirmed).
+- [x] CI triggers are configured for `develop`/`main` pushes and relevant PRs;
+      execution on `main`/PRs has not been separately observed.
+- [x] The expected single `package` artifact is produced; Dependabot is
+      configured for Gradle and Actions (actual update PRs not tested).
+- [x] The official Wrapper JAR is present in the repository with the published
+      checksum; Wrapper launchers are the project's custom scripts.
+- [x] The Gradle-built JAR loaded on a test server and basic armor stand
+      editing still worked (operator confirmed; server build not recorded).
+- [x] Changelog and modernization plan reflect completed Phase 1 work.
+- [ ] Full gameplay regression suite and release-candidate review (Phase 7).
 
 ## Performance comparison (Phase 6)
 
@@ -117,4 +129,4 @@ Wrapper JAR should then be committed, and the in-game check follows. The artifac
 | Date / phase | Build + environment | Result | Details / regression link |
 | --- | --- | --- | --- |
 | October 2026 / Phase 0 | Paper 26.3, Maven CI artifact 26.3 | PASS (core behavior) | Reported production testing: editing modes, equipment, copy/paste, targeting, permissions, normal highlighting; known limitations remain documented for later phases. |
-| October 30, 2026 / Phase 1 | Gradle 9.8.2 + Java 25 (planned) | PENDING CI / server | Build files and GitHub workflows migrated; Gradle execution and game testing unavailable here. |
+| October 30, 2026 / Phase 1 | Gradle 9.8.2, Java 25; Paper API `26.3.build.231-stable` resolved | PASS (build and focused smoke test) | GitHub Actions Gradle build, JAR verifier and CodeQL passed; verified Wrapper JAR present. Operator confirmed plugin loads and basic editing works on a test server. Full gameplay suite deferred; test-server build not recorded. |
