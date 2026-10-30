@@ -6,12 +6,14 @@
 > project is finished. Keep the concise, permanent history in `changelog.md`.
 
 **Status:** Phase 0 complete (production baseline confirmed); **Phase 1 complete
-on `develop` (2026-10-30)**. Gradle CI and CodeQL passed; the checksum-verified
+on `develop` (2026-10-30)**. **Phase 2 source changes prepared on `develop`
+(2026-10-30), pending Gradle CI and live protection/gameplay acceptance.**
+Gradle CI and CodeQL passed for Phase 1; the checksum-verified
 Gradle Wrapper JAR is present in the repository; the Gradle-built plugin loaded
 and basic editing worked on a test server (reported by BadWolfMC administration).
 The full gameplay regression suite was not repeated for this build-only phase;
 affected cases will be tested during subsequent phases, with full coverage at
-Phase 7. Phases 2–7 not started. `main` remains the stable reference pending merge.
+Phase 7. Phases 3–7 not started. `main` remains the stable reference pending merge.
 **Baseline:** BadWolfMC fork of RypoFalem/ArmorStandEditor; source archive reviewed
 2026-10-30; baseline `develop` commit `09da6ec` (also `main` in the supplied
 archive). Phase 0 Maven CI produced `armorstandeditor-26.3.jar` as an artifact,
@@ -140,8 +142,33 @@ was retested. `main` is not marked merged by this closeout.
 - Regression-test authorized and unauthorized players, inventory access,
   shortcuts, creative/survival, and overlapping player events.
 
-**Exit:** Editing works; chest/door/button and unrelated entity interactions
-remain normal; unauthorized users experience no editor interference.
+**Implementation (2026-10-30, live acceptance pending):** All tool interception
+now uses the already-declared `asedit.basic` gate, consistent with `/ase`, the
+GUI, and `PlayerEditor`'s edit methods. The formerly undeclared `asedit.use`
+was only checked on air-menu opening; removing that inconsistent check does
+**not** grant editing to `asedit.use`-only players. Players granted only
+`asedit.basic` were already able to edit stands and use `/ase`; they now also
+get the air-menu shortcut. Validate actual BadWolfMC permission-group grants
+before deployment. `asedit.invisible` and `asedit.rename` remain additional
+checks; `asedit.disableslots` selection is permission-gated, but the mode
+remains unimplemented until Phase 4. No permissions were added to `plugin.yml`.
+
+Real entity events are handled at `HIGHEST` with `ignoreCancelled=true` so
+existing cancellations are respected; only authorized main-hand flint against
+an armor stand is consumed. Only main-hand air clicks can open the menu, and
+no block interaction is cancelled. Air interactions have a vanilla-predicted
+block-use cancellation state, so the handler tests `useItemInHand()` for an
+explicit item-use denial instead. Both synthetic protection events remain,
+using an identity-scoped guard rather than the shared boolean. A previously
+selected stand is rechecked by the protection hooks before editing; if its
+protection now denies access, that edit is refused. The synthetic
+`PlayerInteractAtEntityEvent` uses an entity-relative zero click vector
+instead of the old world position. Verify behavior with BadWolfMC's actual
+protection plugins; synthetic events are not a universal authorization API.
+
+**Exit (not yet accepted):** Editing works; chest/door/button and unrelated
+entity interactions remain normal; unauthorized users experience no editor
+interference; protected regions deny edits; Gradle CI and live test pass.
 
 ### Phase 3 — Scale and Invulnerability
 
@@ -203,8 +230,12 @@ remove these temporary planning/checklist files when their work is complete.
   `${project.version}` token; the legacy CI `dist` upload used a nonexistent
   `target/armorstandeditor.jar` path. Phase 1 uses targeted Gradle resource
   expansion and one verified artifact upload; Gradle and CodeQL CI passed.
-- Which permission nodes are relied upon by BadWolfMC permission groups,
-  especially `asedit.use` versus `asedit.basic`? Avoid quietly changing grants.
+- **Phase 2 implementation decision:** `asedit.basic` is the unified master
+  gate; the one undeclared `asedit.use` check was removed from air-menu access.
+  Existing BadWolfMC permission-group assignments must still be reviewed in
+  live testing, particularly non-op `asedit.basic` users. No new edit grants
+  are intended. `asedit.rename` still requires the master gate and the
+  mode-specific node. `asedit.disableslots` remains deferred to Phase 4.
 - What is the safest way to recognize editor-owned Glowing without removing
   other sources' effects? Verify under ticking transitions.
 - Is `setCanMove` persisted by the target server version, or is a PDC restore

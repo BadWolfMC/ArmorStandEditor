@@ -391,15 +391,20 @@ public class PlayerEditor {
     highlight(target);
   }
 
-  ArmorStand attemptTarget(ArmorStand armorStand) {
+  // Resolve without side effects so protection can be checked before editing.
+  ArmorStand resolveTarget(ArmorStand armorStand) {
     if (target == null ||
       !target.isValid() ||
       target.getWorld() != getPlayer().getWorld() ||
       target.getLocation().distanceSquared(getPlayer().getLocation()) > 100)
       return armorStand;
-    armorStand = target;
-    highlight(armorStand);
-    return armorStand;
+    return target;
+  }
+
+  ArmorStand attemptTarget(ArmorStand armorStand) {
+    ArmorStand selected = resolveTarget(armorStand);
+    if (target != null && selected == target) highlight(selected);
+    return selected;
   }
 
   void sendMessage(String path, String format, String option) {

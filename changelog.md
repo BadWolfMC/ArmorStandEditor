@@ -5,6 +5,27 @@ Keep entries concise and limited to work that has actually been completed.
 
 ## Unreleased
 
+### Phase 2 — Flint interactions and authorization (pending live acceptance)
+- Restricted editor event handling to players with `asedit.basic` and the
+  configured main-hand tool; unauthorized flint, hand-swaps and sneak-scroll
+  now leave vanilla events alone. The undeclared `asedit.use` air-menu-only
+  check has been replaced by the existing `asedit.basic` master gate, matching
+  commands, GUI and actual editing permission. Existing `asedit.basic` holders
+  can now open the air menu without a separate `asedit.use` grant.
+- Stopped menu opening/cancellation on block clicks and unrelated entity
+  attacks; retained air-menu and armor-stand editing controls for editors.
+- Kept protection-plugin synthetic interaction checks, replacing the shared
+  recursion boolean with an identity-scoped event guard; recheck selected
+  targets before edits, respect already-cancelled entity events, and use
+  explicit item-use denial to suppress air menus.
+- Enforced `asedit.basic` alongside `asedit.rename` for enhanced name-tag
+  behavior; corrected case-insensitive invisible-mode permission enforcement
+  and gated selection of the still-unimplemented `disableslots` mode.
+
+**Verification:** Source diff and static invariants reviewed; build and
+in-game acceptance are pending GitHub Actions and BadWolfMC test-server runs.
+
+
 ### Maintenance
 - Completed the Maven-to-Gradle Kotlin DSL migration with Java 25 and Paper
   `26.3.build.+`, retaining plugin version `26.3` and unchanged gameplay sources.

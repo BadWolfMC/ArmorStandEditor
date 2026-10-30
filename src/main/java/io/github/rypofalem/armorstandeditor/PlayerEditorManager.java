@@ -21,8 +21,11 @@ package io.github.rypofalem.armorstandeditor;
 
 import io.github.rypofalem.armorstandeditor.menu.ASEHolder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -35,7 +38,6 @@ import org.bukkit.SoundCategory;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -66,7 +68,9 @@ public class PlayerEditorManager implements Listener {
   double fineAdj;
   double coarseMov;
   double fineMov;
-  private boolean ignoreNextInteract = false;
+  // Ignore only the exact synthetic event we dispatch, never another player's event.
+  private final Set<PlayerInteractAtEntityEvent> syntheticInteractions =
+      Collections.newSetFromMap(new IdentityHashMap<>());
   private TickCounter counter;
 
   PlayerEditorManager(ArmorStandEditorPlugin plugin) {
@@ -80,80 +84,83 @@ public class PlayerEditorManager implements Listener {
     Bukkit.getServer().getScheduler().runTaskTimer(plugin, counter, 0, 1);
   }
 
-  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-  void onArmorStandDamage(EntityDamageByEntityEvent event) {
-    if (!(event.getDamager() instanceof Player)) return;
-    Player player = (Player) event.getDamager();
-    if (!plugin.isEditTool(player.getInventory().getItemInMainHand())) return;
-    if (!(event.getEntity() instanceof ArmorStand)) {
-      event.setCancelled(true);
-      getPlayerEditor(player.getUniqueId()).openMenu();
-      return;
-    }
-    ArmorStand as = (ArmorStand) event.getEntity();
-    getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
-    event.setCancelled(true);
-    if (canEdit(player, as)) applyLeftTool(player, as);
+  // The declared asedit.basic permission is the editor's master gate. The old
+  // air-menu-only asedit.use check was undeclared and disagreed with commands.
+  private boolean canUseTool(Player player) {
+    return player.hasPermission("asedit.basic") &&
+        plugin.isEditTool(player.getInventory().getItemInMainHand());
   }
 
-  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-  void onArmorStandInteract(PlayerInteractAtEntityEvent event) {
-    if (ignoreNextInteract) return;
-    if (event.getHand() != EquipmentSlot.HAND) return;
-    Player player = event.getPlayer();
-    if (!(event.getRightClicked() instanceof ArmorStand)) return;
-    final ArmorStand as = (ArmorStand) event.getRightClicked();
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  void onArmorStandDamage(EntityDamageByEntityEvent event) {
+    if (!(event.getDamager() instanceof Player player) || !canUseTool(player)) return;
+    // Damage to any entity must suppress a pending air-menu task, but only
+    // armor stands are edited or have their damage event cancelled.
+    getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
+    if (!(event.getEntity() instanceof ArmorStand as)) return;
 
-    if (!canEdit(player, as)) return;
-    if (plugin.isEditTool(player.getInventory().getItemInMainHand())) {
-      getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
-      event.setCancelled(true);
+    // Tool attacks should not damage stands, even when a region denies editing.
+    event.setCancelled(true);
+    applyLeftTool(player, as);
+  }
+
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  void onArmorStandInteract(PlayerInteractAtEntityEvent event) {
+    if (syntheticInteractions.contains(event) || event.getHand() != EquipmentSlot.HAND ||
+        !(event.getRightClicked() instanceof ArmorStand as)) return;
+
+    Player player = event.getPlayer();
+    if (canUseTool(player)) {
+      event.setCancelled(true); // Never use vanilla equipment manipulation as an edit.
       applyRightTool(player, as);
       return;
     }
 
-    //Attempt rename
-    if (player.getInventory().getItemInMainHand().getType() == Material.NAME_TAG && player.hasPermission("asedit.rename")) {
-      ItemStack nameTag = player.getInventory().getItemInMainHand();
-      final String name;
-      if (nameTag.getItemMeta() != null && nameTag.getItemMeta().hasDisplayName()) {
-        name = nameTag.getItemMeta().getDisplayName().replace('&', ChatColor.COLOR_CHAR);
-      } else {
-        name = null;
-      }
+    // The special formatting behavior requires both the master gate and rename.
+    // All other items (including unauthorized flint) retain vanilla interaction.
+    if (!player.hasPermission("asedit.basic") || !player.hasPermission("asedit.rename") ||
+        player.getInventory().getItemInMainHand().getType() != Material.NAME_TAG ||
+        !canEdit(player, as)) return;
 
-      if (name == null) {
-        as.setCustomName(null);
-        as.setCustomNameVisible(false);
-        event.setCancelled(true);
-      } else if (!name.equals("")) { // nametag is not blank
-        event.setCancelled(true);
+    ItemStack nameTag = player.getInventory().getItemInMainHand();
+    final String name;
+    if (nameTag.getItemMeta() != null && nameTag.getItemMeta().hasDisplayName()) {
+      name = nameTag.getItemMeta().getDisplayName().replace('&', ChatColor.COLOR_CHAR);
+    } else {
+      name = null;
+    }
 
-        if ((player.getGameMode() != GameMode.CREATIVE)) {
-          if (nameTag.getAmount() > 1) {
-            nameTag.setAmount(nameTag.getAmount() - 1);
-          } else {
-            nameTag = new ItemStack(Material.AIR);
-          }
-          player.getInventory().setItemInMainHand(nameTag);
+    if (name == null) {
+      as.setCustomName(null);
+      as.setCustomNameVisible(false);
+      event.setCancelled(true);
+    } else if (!name.equals("")) { // nametag is not blank
+      event.setCancelled(true);
+
+      if (player.getGameMode() != GameMode.CREATIVE) {
+        if (nameTag.getAmount() > 1) {
+          nameTag.setAmount(nameTag.getAmount() - 1);
+        } else {
+          nameTag = new ItemStack(Material.AIR);
         }
-
-        //minecraft will set the name after this event even if the event is cancelled.
-        //change it 1 tick later to apply formatting without it being overwritten
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-          as.setCustomName(name);
-          as.setCustomNameVisible(true);
-        }, 1);
+        player.getInventory().setItemInMainHand(nameTag);
       }
+
+      // Minecraft may overwrite the name even if this event is cancelled.
+      Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        as.setCustomName(name);
+        as.setCustomNameVisible(true);
+      }, 1);
     }
   }
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onSwitchHands(PlayerSwapHandItemsEvent event) {
-    if (!plugin.isEditTool(event.getOffHandItem())) return; //event assumes they are already switched
-    event.setCancelled(true);
     Player player = event.getPlayer();
-    getPlayerEditor(event.getPlayer().getUniqueId()).setTarget(getTargets(player));
+    // The event's offhand item represents the proposed post-swap state.
+    if (!player.hasPermission("asedit.basic") || !plugin.isEditTool(event.getOffHandItem())) return;
+    event.setCancelled(true);
+    getPlayerEditor(player.getUniqueId()).setTarget(getTargets(player));
   }
 
   private ArrayList < ArmorStand > getTargets(Player player) {
@@ -189,68 +196,65 @@ public class PlayerEditorManager implements Listener {
   }
 
   boolean canEdit(Player player, ArmorStand as) {
-    ignoreNextInteract = true;
-    ArrayList < Event > events = new ArrayList < > ();
-    events.add(new PlayerInteractEntityEvent(player, as, EquipmentSlot.HAND));
-    events.add(new PlayerInteractAtEntityEvent(player, as, as.getLocation().toVector(), EquipmentSlot.HAND));
-    //events.add(new PlayerArmorStandManipulateEvent(player, as, player.getEquipment().getItemInMainHand(), as.getItemInHand(), EquipmentSlot.HAND));
-    for (Event event: events) {
-      if (!(event instanceof Cancellable)) continue;
-      try {
-        plugin.getServer().getPluginManager().callEvent(event);
-      } catch (IllegalStateException ise) {
-        ise.printStackTrace();
-        ignoreNextInteract = false;
-        return false; //Something went wrong, don't allow edit just in case
-      }
-      if (((Cancellable) event).isCancelled()) {
-        ignoreNextInteract = false;
-        return false;
-      }
+    // Keep both synthetic interaction checks for protection plugins. These are
+    // synchronous: only our precise event is excluded from our own listener.
+    PlayerInteractEntityEvent interact = new PlayerInteractEntityEvent(player, as, EquipmentSlot.HAND);
+    PlayerInteractAtEntityEvent interactAt =
+        new PlayerInteractAtEntityEvent(player, as, new Vector(0, 0, 0), EquipmentSlot.HAND);
+    syntheticInteractions.add(interactAt);
+    try {
+      plugin.getServer().getPluginManager().callEvent(interact);
+      if (interact.isCancelled()) return false;
+      plugin.getServer().getPluginManager().callEvent(interactAt);
+      return !interactAt.isCancelled();
+    } catch (IllegalStateException exception) {
+      plugin.getLogger().warning("Unable to check armor stand interaction protection: " + exception.getMessage());
+      return false; // Fail closed rather than edit without the protection check.
+    } finally {
+      syntheticInteractions.remove(interactAt);
     }
-    ignoreNextInteract = false;
-    return true;
+  }
+
+  // Check both the physically clicked stand and the effective selected target.
+  // A target selected earlier must not bypass protection after permissions or
+  // region membership change, or after the player targets another stand.
+  private boolean canApplyTool(Player player, ArmorStand clicked, PlayerEditor editor) {
+    if (!canEdit(player, clicked)) return false;
+    ArmorStand selected = editor.resolveTarget(clicked);
+    return selected == clicked || canEdit(player, selected);
   }
 
   void applyLeftTool(Player player, ArmorStand as) {
-    getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
-    getPlayerEditor(player.getUniqueId()).editArmorStand(as);
+    PlayerEditor editor = getPlayerEditor(player.getUniqueId());
+    editor.cancelOpenMenu();
+    if (canApplyTool(player, as, editor)) editor.editArmorStand(as);
   }
 
   void applyRightTool(Player player, ArmorStand as) {
-    getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
-    getPlayerEditor(player.getUniqueId()).reverseEditArmorStand(as);
+    PlayerEditor editor = getPlayerEditor(player.getUniqueId());
+    editor.cancelOpenMenu();
+    if (canApplyTool(player, as, editor)) editor.reverseEditArmorStand(as);
   }
 
-  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-  void onRightClickTool(PlayerInteractEvent e) {
-    if (!(e.getAction() == Action.LEFT_CLICK_AIR ||
-          e.getAction() == Action.RIGHT_CLICK_AIR ||
-          e.getAction() == Action.LEFT_CLICK_BLOCK ||
-          e.getAction() == Action.RIGHT_CLICK_BLOCK)) return;
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+  void onRightClickTool(PlayerInteractEvent event) {
+    // Only genuine air clicks open the menu; never consume any block action.
+    // Air events are often already "cancelled" by Paper's vanilla prediction.
+    if (event.getHand() != EquipmentSlot.HAND ||
+        (event.getAction() != Action.LEFT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_AIR)) return;
+    Player player = event.getPlayer();
+    if (!canUseTool(player) || event.useItemInHand() == Event.Result.DENY) return;
 
-    Player player = e.getPlayer();
-    if (!plugin.isEditTool(player.getInventory().getItemInMainHand())) return;
-
-    // Only proceed if the player is allowed to use the tool
-    if (player.hasPermission("asedit.use")) {
-        // Case 1: targeting an ArmorStand they can edit → handled elsewhere
-        Entity target = player.getTargetEntity(5);
-        if (target instanceof ArmorStand && canEdit(player, (ArmorStand) target)) {
-            // Let the other handlers take care of that interaction
-            return;
-        }
-
-        // Case 2: not targeting anything special → open the menu
-        e.setCancelled(true);
-        getPlayerEditor(player.getUniqueId()).openMenu();
-    }
+    // Air's default block-use denial is not a plugin item-use denial.
+    // Any entity hit is handled by vanilla/entity events, never by an air menu.
+    if (player.getTargetEntity(5) != null) return;
+    getPlayerEditor(player.getUniqueId()).openMenu();
   }
 
   @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
   void onScrollNCrouch(PlayerItemHeldEvent e) {
     Player player = e.getPlayer();
-    if (!player.isSneaking()) return;
+    if (!player.isSneaking() || !player.hasPermission("asedit.basic")) return;
     if (!plugin.isEditTool(player.getInventory().getItem(e.getPreviousSlot()))) return;
 
     e.setCancelled(true);

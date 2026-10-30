@@ -31,8 +31,82 @@ steps and compare to the baseline before filing a regression.
       arms/baseplate, equipment, rename, copy/paste and reset behavior.
 - [ ] Record basic restart/persistence behavior in a disposable test world.
 
-## Interaction and permissions (repeat after Phase 2)
+## Phase 2 — Flint interactions and authorization (live acceptance pending)
 
+**Source-level status (2026-10-30):** Phase 2 handlers, selected-target
+protection recheck, and command-mode gates have been updated on `develop`.
+Local Gradle compile could not run in this environment (Java 21 only, no
+Gradle distribution cached, no network access); **none of the in-game checks
+below are marked PASS**. Run GitHub Actions Gradle and CodeQL before deploying
+and record the server's Paper build and protection-plugin names/versions.
+
+**Permission matrix to verify** (check via LuckPerms/equivalent, using actual
+BadWolfMC permission groups, not an assumed role hierarchy):
+
+| Effective permissions | Expected editor behavior |
+| --- | --- |
+| Neither `asedit.basic` nor `asedit.use` | Completely vanilla flint; `/ase` denied |
+| `asedit.use` only | Completely vanilla flint; `/ase` denied |
+| `asedit.basic` only | Tool editing, air menu, commands and GUI enabled; invisible/rename additionally require their own permissions |
+| `asedit.basic` + `asedit.use` | Same as `asedit.basic` only; no additional edit powers |
+| `asedit.basic` with `asedit.invisible` explicitly denied | Invisible mode cannot be selected via `/ase` in any letter case and cannot be applied |
+| `asedit.basic` with `asedit.rename` denied | No plugin-enhanced name-tag formatting (vanilla naming remains available where permitted) |
+
+`asedit.use` was never declared in `plugin.yml` and previously gated only
+the air menu. `asedit.basic` was already the command/GUI/actual-edit gate;
+Phase 2 uses it for all tool events. **Confirm this explicit policy with the
+real permission assignments before accepting Phase 2.** No new permission
+nodes, defaults or inheritance were introduced. `asedit.disableslots` is
+currently only a nonfunctional placeholder, left for Phase 4.
+
+### Targeted steps (run in Survival and Creative as applicable)
+
+1. **Unprivileged** (no `asedit.basic`): hold plain flint in main hand; open a
+   chest, barrel, door, trapdoor, gate; press stone/wood buttons, use levers,
+   interact with ordinary and protected blocks. Compare to empty hand. No
+   editor GUI, action bar, sound, cancellation or lost interactions.
+2. **Unprivileged**: left-click a mob/player/item frame/other entity, and
+   right-click an armor stand with flint. Damage/interactions must be normal
+   for their game mode and region. Sneak-scroll and press F: vanilla slot
+   switching and hand swapping, even with flint in offhand.
+3. **Authorized** (`asedit.basic`): repeat the block/other-entity checks while
+   holding flint. Blocks and unrelated mobs must behave as vanilla; no editor
+   menu when hitting a mob. Left/right click air with clear sightline: one
+   menu opens. Test while looking directly toward an entity: no false menu.
+4. **Authorized**: select a rotation/movement/pose mode. Left click an armor
+   stand, then right click; both directions work and the armor stand takes no
+   attack damage. Sneak-scroll cycles axes without moving hotbar selection;
+   swap flint from main hand to offhand cycles/selects nearby overlapping
+   armor stands without actually swapping items.
+5. **Both hands**: flint in main hand, regular item in offhand; repeat right
+   clicks on stands, air, chests/doors and entity attacks. Confirm one edit
+   maximum per click. Then put flint only in offhand; no editor interception
+   on offhand events. Swapping offhand flint back should remain vanilla unless
+   the configured main-to-offhand targeting shortcut is in use.
+6. **Protections**: place stands inside denied and allowed regions. Test
+   left/right click, name-tag formatting, and hand-swap target selection in
+   both regions; denial must block edits. Select a stand while permitted,
+   then change its region permission or move to a restricted situation before
+   editing again. No stale-target bypass. Also test already-cancelled entity
+   damage/interact events from other plugins.
+7. **Two players**: Player A target-cycles stands while Player B interacts
+   with another stand (one protected, one allowed); neither user's event is
+   silently skipped or authorized by the other's synthetic check. Repeatedly
+   alternate and test in the same tick if practical.
+8. **Mode permissions / GUI**: non-op editor with only `asedit.basic` can
+   select a regular mode and use the air menu; player with only `asedit.use`
+   cannot. `/ase mode invisible` and mixed-case variants require
+   `asedit.invisible`; formatted name tags require `asedit.rename` plus basic.
+   Exercise Equipment, copy/paste and ordinary editing to confirm parity.
+9. **Protection-specific**: if your protection plugin cancels air item use,
+   confirm its item-use `DENY` prevents the air menu; test region-boundary
+   interactions where another plugin cancels at the same/higher priority.
+
+### Acceptance checkboxes
+
+
+- [ ] Real BadWolfMC group grants match the permission matrix above; no
+      unintended access has been given or removed.
 - [ ] No editor permission + flint: ordinary chest/door/button interaction.
 - [ ] No editor permission + flint: ordinary block and entity interactions;
       no unsolicited GUI, cancellation, messages, or sound.
@@ -43,9 +117,10 @@ steps and compare to the baseline before filing a regression.
 - [ ] Authorized editor + flint: air menu and selected stand editing still work.
 - [ ] Authorized editor + flint: left/right editing, axis change and target
       cycling have expected direction and outcome.
-- [ ] Both hands: offhand events do not trigger duplicate or unexpected edits.
+- [ ] Both hands: offhand events do not trigger duplicate or unexpected edits;
+      explicitly denied air item use does not open a menu.
 - [ ] Protected region: editing is refused where region protection forbids it;
-      normal unprotected editing is allowed.
+      normal unprotected editing is allowed; stale selections cannot bypass it.
 - [ ] Multi-player simultaneous use: no shared event guard or selected-target
       state leaks between players.
 - [ ] Creative and survival behaviors match intended editor permissions.
@@ -130,3 +205,4 @@ build was not independently recorded. Full regression remains a Phase 7 gate.
 | --- | --- | --- | --- |
 | October 2026 / Phase 0 | Paper 26.3, Maven CI artifact 26.3 | PASS (core behavior) | Reported production testing: editing modes, equipment, copy/paste, targeting, permissions, normal highlighting; known limitations remain documented for later phases. |
 | October 30, 2026 / Phase 1 | Gradle 9.8.2, Java 25; Paper API `26.3.build.231-stable` resolved | PASS (build and focused smoke test) | GitHub Actions Gradle build, JAR verifier and CodeQL passed; verified Wrapper JAR present. Operator confirmed plugin loads and basic editing works on a test server. Full gameplay suite deferred; test-server build not recorded. |
+| October 30, 2026 / Phase 2 | Source and static review on `develop`; Gradle offline attempt failed (no distribution/network; Java 21 runtime) | BLOCKED (build/in-game) | Permission/event fixes prepared; CI, CodeQL, live Paper and protection-plugin matrix still to run. No gameplay outcomes claimed. |
