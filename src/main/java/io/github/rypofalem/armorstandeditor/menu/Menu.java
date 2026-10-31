@@ -115,9 +115,11 @@ public class Menu {
     invulnerable = createIcon(new ItemStack(Material.TOTEM_OF_UNDYING),
       "invulnerable", "mode invulnerable");
 
-    if (pe.getPlayer().hasPermission("asedit.lockequipment")) {
-      lockEquipment = createIcon(new ItemStack(Material.IRON_BARS), "lockequipment", "mode lockequipment");
-    }
+    // Always show the property in the menu. CommandEx independently enforces
+    // asedit.lockequipment when the icon is selected; hiding the icon made it
+    // look as though the feature had never been added for basic-only editors.
+    lockEquipment = createIcon(new ItemStack(Material.TRIAL_KEY),
+      "lockequipment", "mode lockequipment");
 
     gravity = createIcon(new ItemStack(Material.SAND), "gravity", "mode gravity");
 
@@ -179,9 +181,9 @@ public class Menu {
     items[25] = size;
     items[26] = scale;
     items[32] = invulnerable;
-    items[33] = gravity;
-    items[34] = plate;
-    items[35] = lockEquipment;
+    items[33] = lockEquipment;
+    items[34] = gravity;
+    items[35] = plate;
     // Slots 41-43 remain available for future property toggles.
 
     items[37] = copy;

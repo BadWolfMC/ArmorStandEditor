@@ -15,8 +15,10 @@ Keep entries concise and limited to work that has actually been completed.
   immediately committed cursor swaps, rather than clearing the stand until
   inventory close. Revalidates access on swaps, updates concurrent previews,
   and blocks inventory extraction/drag/shift/clone bypasses.
-- Grouped property modes in the main GUI, with Size beside Scale; updated
-  concise English fallback descriptions and instructions.
+- Grouped property modes in the main GUI, with Size beside Scale and
+  Invulnerability beside Lock Equipment (Trial Key). The lock icon now remains
+  visible to all editors, while the lock permission still controls selection;
+  updated concise English fallback descriptions and instructions.
 - **Pending:** Java 25 CI, CodeQL and live Paper tests for protected regions,
   interruption handling, creative/survival, cursor/full-inventory behavior,
   and the existing editing/interaction baseline.

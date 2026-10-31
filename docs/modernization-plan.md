@@ -254,9 +254,12 @@ saves; no extra persistence layer was added. Observe Paper's cursor behavior
 with a full inventory on quit/restart during live testing.
 
 **GUI follow-up:** Property toggles are grouped in the right-hand columns;
-Size and Scale are adjacent, with future property slots reserved without
-implementing later-phase features. English lore is kept to short, practical
-lines and existing locale fallback is retained.
+Size and Scale are adjacent, and Invulnerability sits beside Lock Equipment
+(Trial Key), followed by Gravity and Baseplate. All property icons remain
+visible to editors; the existing `asedit.lockequipment` command permission
+still gates use of the lock mode. Future property slots remain reserved,
+without implementing later-phase features. English lore is kept to short,
+practical lines and existing locale fallback is retained.
 
 **Exit (pending):** No accidental vanilla changes while locked; authorized
 GUI editing works in creative and survival; no loss/duplication across normal

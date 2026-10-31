@@ -200,8 +200,10 @@ unverified compatibility edge, not a claim of universal protection support.
       English fallback still behave as established in Phase 2.
 ## Phase 4 — equipment locks and GUI safety (pending CI and live verification)
 
-- [ ] `/ase mode lockequipment` and GUI icon appear for `asedit.lockequipment`;
-      players without it cannot select the mode, including mixed-case commands.
+- [ ] Lock Equipment displays as a Trial Key immediately after Invulnerability,
+      followed by Gravity and Baseplate; the GUI icon is visible to basic-only
+      editors, but selecting it (or `/ase mode lockequipment`) requires
+      `asedit.lockequipment`, including with mixed-case commands.
       `asedit.basic` remains required. Old `disableslots` mode is unavailable.
 - [ ] Lock all six slots (helmet, chest, leggings, boots, main hand, offhand):
       normal survival/creative interactions cannot add, remove or swap items,
