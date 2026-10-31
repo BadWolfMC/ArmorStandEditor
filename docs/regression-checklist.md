@@ -31,14 +31,14 @@ steps and compare to the baseline before filing a regression.
       arms/baseplate, equipment, rename, copy/paste and reset behavior.
 - [ ] Record basic restart/persistence behavior in a disposable test world.
 
-## Phase 2 — Flint interactions and authorization (live acceptance pending)
+## Phase 2 — Flint interactions and authorization (accepted; command follow-up pending)
 
-**Source-level status (2026-10-30):** Phase 2 handlers, selected-target
-protection recheck, and command-mode gates have been updated on `develop`.
-Local Gradle compile could not run in this environment (Java 21 only, no
-Gradle distribution cached, no network access); **none of the in-game checks
-below are marked PASS**. Run GitHub Actions Gradle and CodeQL before deploying
-and record the server's Paper build and protection-plugin names/versions.
+**Live status (2026-10-31):** BadWolfMC administration confirmed green Gradle
+CI and CodeQL, and that all eight targeted Phase 2 test groups passed on the
+server. Earlier local compilation remained unavailable (Java 21 only, no
+cached Gradle distribution/network). Exact Paper build and protection-plugin
+versions were not supplied. `/ase gui` is a subsequent convenience change
+and has not been built or tested in game yet.
 
 **Permission matrix to verify** (check via LuckPerms/equivalent, using actual
 BadWolfMC permission groups, not an assumed role hierarchy):
@@ -104,26 +104,48 @@ currently only a nonfunctional placeholder, left for Phase 4.
 
 ### Acceptance checkboxes
 
+User confirmed the targeted test groups passed on 2026-10-31. The individual
+checks below record the accepted Phase 2 scenarios rather than an independently
+observed test run.
 
-- [ ] Real BadWolfMC group grants match the permission matrix above; no
+- [x] Real BadWolfMC group grants match the permission matrix above; no
       unintended access has been given or removed.
-- [ ] No editor permission + flint: ordinary chest/door/button interaction.
-- [ ] No editor permission + flint: ordinary block and entity interactions;
+- [x] No editor permission + flint: ordinary chest/door/button interaction.
+- [x] No editor permission + flint: ordinary block and entity interactions;
       no unsolicited GUI, cancellation, messages, or sound.
-- [ ] No editor permission + flint: ordinary sneak-scroll and hand swap.
-- [ ] Authorized editor + flint: chest, door, button and other interactive
+- [x] No editor permission + flint: ordinary sneak-scroll and hand swap.
+- [x] Authorized editor + flint: chest, door, button and other interactive
       blocks still work; opening the chest doesn't open the editor instead.
-- [ ] Authorized editor + flint: attacks on unrelated entities stay vanilla.
-- [ ] Authorized editor + flint: air menu and selected stand editing still work.
-- [ ] Authorized editor + flint: left/right editing, axis change and target
+- [x] Authorized editor + flint: attacks on unrelated entities stay vanilla.
+- [x] Authorized editor + flint: air menu and selected stand editing still work.
+- [x] Authorized editor + flint: left/right editing, axis change and target
       cycling have expected direction and outcome.
-- [ ] Both hands: offhand events do not trigger duplicate or unexpected edits;
-      explicitly denied air item use does not open a menu.
-- [ ] Protected region: editing is refused where region protection forbids it;
+- [x] Both hands: offhand events do not trigger duplicate or unexpected edits.
+- [ ] Edge-case protection: explicit `DENY` of air-item use by another
+      plugin prevents opening the menu (not specifically confirmed in the
+      reported eight test groups).
+- [x] Protected region: editing is refused where region protection forbids it;
       normal unprotected editing is allowed; stale selections cannot bypass it.
-- [ ] Multi-player simultaneous use: no shared event guard or selected-target
+- [x] Multi-player simultaneous use: no shared event guard or selected-target
       state leaks between players.
-- [ ] Creative and survival behaviors match intended editor permissions.
+- [x] Creative and survival behaviors match intended editor permissions.
+
+### Phase 2 confined-space GUI follow-up — pending verification
+
+- [ ] GitHub Actions Gradle build, package verifier and CodeQL pass with
+      the `/ase gui` command addition.
+- [ ] Editor with `asedit.basic` opens the same GUI using `/ase gui` while
+      looking at stone, a chest, and a door, and with no flint held.
+- [ ] User lacking `asedit.basic` cannot use `/ase gui`; console use is denied.
+- [ ] Air-click GUI remains unchanged; flint on blocks remains vanilla,
+      including all interactable blocks and attacks against unrelated entities.
+- [ ] Offhand-only flint still has no editing effect, while the hand-swap
+      targeting shortcut still functions.
+
+**Known compatibility observation (2026-10-31):** CMI's non-interactable and
+invulnerable armor-stand protection did not stop an authorized ASE editor,
+although tested region protections did. The two mechanisms should not be
+assumed equivalent; recheck when relevant protection configuration changes.
 
 ## Existing editor behavior (repeat after each affected phase)
 
@@ -205,4 +227,6 @@ build was not independently recorded. Full regression remains a Phase 7 gate.
 | --- | --- | --- | --- |
 | October 2026 / Phase 0 | Paper 26.3, Maven CI artifact 26.3 | PASS (core behavior) | Reported production testing: editing modes, equipment, copy/paste, targeting, permissions, normal highlighting; known limitations remain documented for later phases. |
 | October 30, 2026 / Phase 1 | Gradle 9.8.2, Java 25; Paper API `26.3.build.231-stable` resolved | PASS (build and focused smoke test) | GitHub Actions Gradle build, JAR verifier and CodeQL passed; verified Wrapper JAR present. Operator confirmed plugin loads and basic editing works on a test server. Full gameplay suite deferred; test-server build not recorded. |
-| October 30, 2026 / Phase 2 | Source and static review on `develop`; Gradle offline attempt failed (no distribution/network; Java 21 runtime) | BLOCKED (build/in-game) | Permission/event fixes prepared; CI, CodeQL, live Paper and protection-plugin matrix still to run. No gameplay outcomes claimed. |
+| October 30, 2026 / Phase 2 preparation | Source and static review on `develop`; Gradle offline attempt failed (no distribution/network; Java 21 runtime) | BLOCKED (local build) | Permission/event fixes prepared for CI and in-game acceptance. |
+| October 31, 2026 / Phase 2 acceptance | GitHub Actions Gradle and CodeQL (operator confirmed), Paper 26.3 | PASS (targeted gameplay) | All eight targeted test groups passed, including region protection, permission groups and both hands. Offhand-only flint does nothing by design. CMI-specific non-interactable/invulnerable settings did not prevent ASE edits; not accepted as a protection boundary. |
+| October 31, 2026 / GUI command follow-up | Source-only change; CI/server not yet rerun | PENDING | New `/ase gui` access for confined spaces; existing flint click events unchanged. |

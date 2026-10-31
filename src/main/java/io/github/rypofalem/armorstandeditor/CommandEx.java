@@ -36,6 +36,7 @@ public class CommandEx implements CommandExecutor{
 	final String LISTADJUSTMENT = ChatColor.GREEN + "/ase adj <" + Util.getEnumList(AdjustmentMode.class) + ">";
 	final String LISTSLOT =  ChatColor.GREEN + "/ase slot <1-9>";
 	final String HELP = ChatColor.GREEN + "/ase help";
+	final String LISTGUI = ChatColor.GREEN + "/ase gui";
 
 	public CommandEx(ArmorStandEditorPlugin armorStandEditorPlugin) {
 		this.plugin = armorStandEditorPlugin;
@@ -55,9 +56,14 @@ public class CommandEx implements CommandExecutor{
 			player.sendMessage(LISTAXIS);
 			player.sendMessage(LISTSLOT);
 			player.sendMessage(LISTADJUSTMENT);
+			player.sendMessage(LISTGUI);
 			return true;
 		}
 		switch(args[0].toLowerCase()){
+			case "gui":
+				// Explicit menu access in tight spaces, without intercepting block clicks.
+				plugin.editorManager.getPlayerEditor(player.getUniqueId()).chestMenu.openMenu();
+				break;
 			case "mode": commandMode(player, args);
 				break;
 			case "axis": commandAxis(player, args);
@@ -75,6 +81,7 @@ public class CommandEx implements CommandExecutor{
 				sender.sendMessage(LISTSLOT);
 				sender.sendMessage(LISTADJUSTMENT);
 				sender.sendMessage(HELP);
+				sender.sendMessage(LISTGUI);
 		}
 		return true;
 	}
@@ -161,6 +168,7 @@ public class CommandEx implements CommandExecutor{
 		player.sendMessage(plugin.getLang().getMessage("helptips", "info"));
 		player.sendMessage("");
 		player.sendRawMessage(plugin.getLang().getMessage("helpurl", ""));
+		player.sendMessage(LISTGUI);
 	}
 
 	private boolean checkPermission(Player player, String permName, boolean sendMessageOnInvalidation){

@@ -6,8 +6,10 @@
 > project is finished. Keep the concise, permanent history in `changelog.md`.
 
 **Status:** Phase 0 complete (production baseline confirmed); **Phase 1 complete
-on `develop` (2026-10-30)**. **Phase 2 source changes prepared on `develop`
-(2026-10-30), pending Gradle CI and live protection/gameplay acceptance.**
+on `develop` (2026-10-30)**. **Phase 2 accepted on `develop`
+(2026-10-31): CI, CodeQL and targeted live tests passed (operator confirmed).**
+A small follow-up adds `/ase gui` for confined spaces; its build and runtime
+checks are pending. The Phase 3 feature work has not started.
 Gradle CI and CodeQL passed for Phase 1; the checksum-verified
 Gradle Wrapper JAR is present in the repository; the Gradle-built plugin loaded
 and basic editing worked on a test server (reported by BadWolfMC administration).
@@ -142,7 +144,7 @@ was retested. `main` is not marked merged by this closeout.
 - Regression-test authorized and unauthorized players, inventory access,
   shortcuts, creative/survival, and overlapping player events.
 
-**Implementation (2026-10-30, live acceptance pending):** All tool interception
+**Implementation (2026-10-30, live-accepted 2026-10-31):** All tool interception
 now uses the already-declared `asedit.basic` gate, consistent with `/ase`, the
 GUI, and `PlayerEditor`'s edit methods. The formerly undeclared `asedit.use`
 was only checked on air-menu opening; removing that inconsistent check does
@@ -166,9 +168,19 @@ protection now denies access, that edit is refused. The synthetic
 instead of the old world position. Verify behavior with BadWolfMC's actual
 protection plugins; synthetic events are not a universal authorization API.
 
-**Exit (not yet accepted):** Editing works; chest/door/button and unrelated
-entity interactions remain normal; unauthorized users experience no editor
-interference; protected regions deny edits; Gradle CI and live test pass.
+**Exit (accepted by BadWolfMC administration, 2026-10-31):** Gradle CI
+and CodeQL passed; authorized and unauthorized gameplay, both hands, target
+selection, unrelated blocks/entities and protection-plugin scenarios passed
+targeted live tests. Offhand-only flint intentionally does not activate the
+editor. CMI armor-stand invulnerability/non-interactable settings did not
+block ASE editing in this environment; do not treat them as a region edit
+prohibition or infer compatibility with every protection plugin.
+
+**Confined-space GUI follow-up (pending CI/live check):** `/ase gui` opens
+the existing menu with `asedit.basic`, without needing a flint click or
+changing block events. Retain air-only click access, because the deprecated
+Material interactability categorization is incomplete. No extra permission
+node or GUI layout change.
 
 ### Phase 3 — Scale and Invulnerability
 

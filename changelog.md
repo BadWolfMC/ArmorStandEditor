@@ -5,7 +5,7 @@ Keep entries concise and limited to work that has actually been completed.
 
 ## Unreleased
 
-### Phase 2 — Flint interactions and authorization (pending live acceptance)
+### Phase 2 — Flint interactions and authorization (accepted on `develop`)
 - Restricted editor event handling to players with `asedit.basic` and the
   configured main-hand tool; unauthorized flint, hand-swaps and sneak-scroll
   now leave vanilla events alone. The undeclared `asedit.use` air-menu-only
@@ -22,8 +22,23 @@ Keep entries concise and limited to work that has actually been completed.
   behavior; corrected case-insensitive invisible-mode permission enforcement
   and gated selection of the still-unimplemented `disableslots` mode.
 
-**Verification:** Source diff and static invariants reviewed; build and
-in-game acceptance are pending GitHub Actions and BadWolfMC test-server runs.
+**Verification (2026-10-31):** BadWolfMC administration confirmed green
+GitHub Actions/CodeQL and passing targeted in-game tests, including permissions,
+region protection, flint interactions, both hands and target switching.
+Offhand-only flint intentionally remains inactive. CMI-protected stands marked
+non-interactable/invulnerable can still be edited by authorized ASE users;
+this is documented as an integration limitation, not an ASE region bypass.
+
+### Phase 2 follow-up — GUI access in tight spaces (pending CI/live acceptance)
+- Added `/ase gui` for players with the existing `asedit.basic` permission.
+  It opens the unchanged editor inventory without requiring flint or an air
+  click. No new permission nodes, block-event handling, or GUI changes.
+- Kept menu opening on air interactions only; did not use the deprecated,
+  incomplete `Material.isInteractable()` classification to intercept block
+  clicks.
+
+**Verification:** Source review and diff checks only; GitHub Actions and
+Paper in-game confirmation pending for this follow-up.
 
 
 ### Maintenance

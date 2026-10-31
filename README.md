@@ -4,6 +4,14 @@ Bukkit/Paper plugin to allow players to edit armor stands without commands.
 
 Read the [wiki](https://github.com/RypoFalem/ArmorStandEditor/wiki) for more info.
 
+## Opening the editor in confined spaces
+
+Players with `asedit.basic` can run `/ase gui` to open the normal editor menu
+without having to find a clear line of sight or hold the flint tool. Clicking
+air with flint still opens the same menu; block clicks remain vanilla. This
+command is a Phase 2 follow-up and requires CI and in-game verification before
+deployment.
+
 ## Building this BadWolfMC fork
 
 The plugin targets Paper 26.3 and Java 25. Build with the Gradle Wrapper;
