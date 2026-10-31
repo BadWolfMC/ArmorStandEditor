@@ -17,6 +17,9 @@ permissions:
     asedit.invisible:
       description: Toggle armorstand visible/invisible.
       default: op
+    asedit.lockequipment:
+      description: Toggle armor stand equipment locks.
+      default: op
     asedit.rename:
       description: Rename armorstands
       default: op

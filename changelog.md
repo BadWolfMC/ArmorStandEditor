@@ -5,7 +5,23 @@ Keep entries concise and limited to work that has actually been completed.
 
 ## Unreleased
 
-### Phase 3 — Scale and Invulnerability (prepared locally; acceptance pending)
+### Phase 4 — Equipment locks and Equipment GUI safety (prepared locally; acceptance pending)
+- Replaced unfinished `DISABLESLOTS` with `LOCKEQUIPMENT` using both native
+  equipment lock types on all six slots. Added `asedit.lockequipment` (default
+  `op`) to the descriptor; mode selection and pasting lock state require it.
+- Copy/paste records each managed lock per slot, leaving unrelated `ADDING`
+  locks alone.
+- Rebuilt the Equipment GUI as a live equipment preview with explicit,
+  immediately committed cursor swaps, rather than clearing the stand until
+  inventory close. Revalidates access on swaps, updates concurrent previews,
+  and blocks inventory extraction/drag/shift/clone bypasses.
+- Grouped property modes in the main GUI, with Size beside Scale; updated
+  concise English fallback descriptions and instructions.
+- **Pending:** Java 25 CI, CodeQL and live Paper tests for protected regions,
+  interruption handling, creative/survival, cursor/full-inventory behavior,
+  and the existing editing/interaction baseline.
+
+### Phase 3 — Scale and Invulnerability (accepted on `develop` 2026-10-31)
 - Added independent `SCALE` editing mode, adjusting the SCALE attribute's base
   from 0.1× to 15.0× in 0.1× Fine or 0.5× Coarse increments without cumulative
   floating-point drift. Original Size mode and existing scale modifiers remain
@@ -14,11 +30,10 @@ Keep entries concise and limited to work that has actually been completed.
   `isMarkedInvulnerable`; retained ordinary damage-event editing and added a
   pre-attack fallback only for marked-invulnerable armor stands, using the
   existing authorization and interaction-based protection gates.
-- Included both properties in copy/paste, placed both modes in unused GUI slots,
-  and provided English messages used as fallbacks for other locales.
-- **Verification pending:** GitHub CI/CodeQL and live Paper testing, especially
-  creative-mode attacks, large/tiny stands and protection plugins that rely
-  exclusively on damage-event cancellation.
+- Included both properties in copy/paste and English fallback messages.
+- **Verified (2026-10-31):** GitHub CI/CodeQL stayed green and BadWolfMC
+  administration reported all ten Phase 3 in-game regression groups passing,
+  including creative-mode attacks, persistence and protected regions.
 
 
 ### Phase 2 — Flint interactions and authorization (accepted on `develop`)

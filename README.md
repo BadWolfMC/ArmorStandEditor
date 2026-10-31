@@ -14,6 +14,20 @@ green, and BadWolfMC administration confirmed it works in game (2026-10-31).
 The remaining command tree will be moved to native Paper Brigadier with tab
 completion in Phase 7; see `docs/modernization-plan.md`.
 
+## Equipment locking (Phase 4 candidate)
+
+The **Lock Equipment** editor mode uses `asedit.lockequipment` (default `op`)
+in addition to `asedit.basic`. It blocks normal armor stand equipment changes
+across all six slots; authorized builders can still edit locked stands through
+the Equipment GUI. It is a native armor stand lock, not a separate item database.
+
+The Equipment GUI previews live equipment; left or right click the lower
+helmet/chest/legs/boots/hand slot to **swap its full stack with the cursor**.
+Pick up equipment or put items on your cursor in your own inventory first.
+No items are unequipped merely by opening the GUI. Shift-click transfers and
+drags into preview slots are intentionally disabled to avoid duplicate gear.
+The Phase 4 implementation still requires CI and live regression testing.
+
 ## Building this BadWolfMC fork
 
 The plugin targets Paper 26.3 and Java 25. Build with the Gradle Wrapper;

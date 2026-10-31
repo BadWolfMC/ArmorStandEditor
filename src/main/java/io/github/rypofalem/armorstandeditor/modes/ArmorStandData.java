@@ -36,6 +36,7 @@ public final class ArmorStandData {
   public final boolean size;
   public final Double scale;
   public final boolean invulnerable;
+  public final boolean[] equipmentLocks;
   public final boolean basePlate;
   public final boolean gravity;
   public final boolean showArms;
@@ -57,6 +58,7 @@ public final class ArmorStandData {
     AttributeInstance scaleAttribute = as.getAttribute(Attribute.SCALE);
     this.scale = scaleAttribute == null ? null : scaleAttribute.getBaseValue();
     this.invulnerable = as.isMarkedInvulnerable();
+    this.equipmentLocks = EquipmentLocks.snapshot(as);
     this.basePlate = as.hasBasePlate();
     this.gravity = as.hasGravity();
     this.showArms = as.hasArms();

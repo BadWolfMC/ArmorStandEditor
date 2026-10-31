@@ -5,18 +5,16 @@
 > remove this plan and the companion regression checklist after the modernization
 > project is finished. Keep the concise, permanent history in `changelog.md`.
 
-**Status:** Phase 0 complete (production baseline confirmed); **Phase 1 complete
-on `develop` (2026-10-30)**; **Phase 2 closed on `develop` (2026-10-31)**,
-including the `/ase gui` follow-up (CI, CodeQL and live functionality confirmed
-by BadWolfMC administration). Phase 3 implementation is prepared locally
-and awaits CI and Paper testing.
-Gradle CI and CodeQL passed for Phase 1; the checksum-verified
-Gradle Wrapper JAR is present in the repository; the Gradle-built plugin loaded
-and basic editing worked on a test server (reported by BadWolfMC administration).
-The full gameplay regression suite was not repeated for this build-only phase;
-affected cases will be tested during subsequent phases, with full coverage at
-Phase 7. Phases 4–7 not started; Phase 3 is not yet accepted. `main`
-remains the stable reference pending merge.
+**Status:** Phase 0 complete; **Phase 1 complete on `develop` (2026-10-30)**;
+**Phase 2 accepted on `develop` (2026-10-31)**, including `/ase gui`;
+**Phase 3 accepted on `develop` (2026-10-31)** after green GitHub CI/CodeQL
+and all ten live regression groups passed (BadWolfMC administration).
+**Phase 4 implementation is prepared locally and awaits CI and live tests.**
+Phases 5–7 have not started; `main` remains the stable reference.
+Gradle CI and CodeQL passed for Phase 1; the checksum-verified Gradle Wrapper
+JAR is present in the repository; the Gradle-built plugin loaded and basic
+editing worked on a test server. The complete release regression suite is a
+Phase 7 acceptance gate.
 **Baseline:** BadWolfMC fork of RypoFalem/ArmorStandEditor; source archive reviewed
 2026-10-30; baseline `develop` commit `09da6ec` (also `main` in the supplied
 archive). Phase 0 Maven CI produced `armorstandeditor-26.3.jar` as an artifact,
@@ -192,7 +190,7 @@ not separately reported remain in the regression checklist for later rechecks.
 - Test adjustment bounds and increments on small and normal stands.
 - Ensure invulnerable stands remain editable (including left-click editing).
 
-**Implementation prepared locally (2026-10-31; NOT YET ACCEPTED):** Added
+**Implementation (2026-10-31; accepted after live testing):** Added
 `SCALE` and `INVULNERABLE` modes to the existing GUI and command enum; scale
 changes the SCALE attribute *base value* by exactly 1 or 5 tenths, with bounds
 0.1–15.0. Existing attribute modifiers remain attached and can influence the
@@ -212,8 +210,13 @@ events) cannot necessarily prevent an early invulnerable-stand edit; verify with
 the production protection plugins. No plugin can promise generalized damage-
 only protection compatibility without an integration strategy.
 
-**Exit (pending):** CI/CodeQL and in-game tests confirm both properties persist
-and edit correctly without harming existing modes, permissions or protections.
+**Exit (accepted 2026-10-31 on `develop`):** GitHub Actions and CodeQL
+remained green (operator confirmed); all ten live test groups passed, covering
+Scale bounds/directions, Size independence, copy/paste and modifiers,
+invulnerability in survival/creative and across restarts, protection regions,
+permissions, legacy edits, flint interactions, GUI commands and language
+fallback. The production-specific damage-only protection caveat remains noted;
+these tests do not establish universal third-party plugin compatibility.
 
 ### Phase 4 — Equipment locks and Equipment GUI safety
 
@@ -225,8 +228,40 @@ and edit correctly without harming existing modes, permissions or protections.
   disconnect, entity removal and shutdown without loss or duplication.
 - Include equipment-lock state in copy/paste and regression tests.
 
-**Exit:** No accidental vanilla changes while locked; authorized GUI editing
-works; equipment remains safe across interrupted sessions.
+**Implementation prepared locally (2026-10-31; acceptance pending):**
+Removed the nonfunctional `DISABLESLOTS` mode and old undeclared
+`asedit.disableslots` selection gate. New `LOCKEQUIPMENT` mode uses
+`asedit.lockequipment` (explicit `plugin.yml` permission; default `op`) and
+both `ADDING_OR_CHANGING` and `REMOVING_OR_CHANGING` lock types on all six
+slots. An incomplete lock set toggles to fully locked; fully locked toggles
+to unlocked. Snapshot/paste preserves each managed lock independently, with
+`ADDING` locks untouched. Pasting lock state requires the new permission,
+so users with only `asedit.basic` cannot toggle locks indirectly.
+
+The Equipment GUI no longer calls `equipment.clear()` or retains equipment
+in a temporary inventory until close. It displays cloned **previews**, cancels
+vanilla top-inventory movement, and commits an intentional left/right click
+as an immediate, explicit *full-stack cursor swap* with the real stand slot.
+Icon slots, shift-transfer, double-click collection, hotbar/offhand exchanges,
+creative cloning and drags into the top inventory cannot move the previews.
+Players can pick up/put down the cursor item in their lower inventory normally.
+The manager binds each view to its player, rechecks basic permission, stand
+validity, proximity and synthetic interaction-protection hooks on each swap,
+and refreshes previews for concurrent editors. Close, quit, stand removal and
+plugin disable require **no pending equipment commit**. Do not represent this
+as transactional across a physical server crash between player/entity disk
+saves; no extra persistence layer was added. Observe Paper's cursor behavior
+with a full inventory on quit/restart during live testing.
+
+**GUI follow-up:** Property toggles are grouped in the right-hand columns;
+Size and Scale are adjacent, with future property slots reserved without
+implementing later-phase features. English lore is kept to short, practical
+lines and existing locale fallback is retained.
+
+**Exit (pending):** No accidental vanilla changes while locked; authorized
+GUI editing works in creative and survival; no loss/duplication across normal
+close, disconnect, stand removal and plugin disable; CI/CodeQL and protected
+region checks pass.
 
 ### Phase 5 — Targeting, Marker and No Movement
 

@@ -26,7 +26,7 @@ setmode:
   size: Toggle Size
   scale: Adjust Scale
   invulnerable: Toggle Invulnerability
-  disableslots: Toggle Disable Slots
+  lockequipment: Toggle Lock Equipment
   gravity: Toggle Gravity
   baseplate: Toggle BasePlate
   placement: Placement
@@ -49,6 +49,10 @@ setscale:
   msg: Scale set to <x>x.
 setinvulnerable:
   msg: Invulnerability turned <x>.
+  on: on
+  off: off
+setlockequipment:
+  msg: Equipment lock turned <x>.
   on: on
   off: off
 setgravity: 
@@ -172,15 +176,15 @@ size:
 scale:
   msg: Scale
   description:
-    msg: Left click to grow, right click to shrink (Fine 0.1, Coarse 0.5; 0.1-15.0)
+    msg: Left click to grow, right click to shrink
 invulnerable:
   msg: Invulnerability
   description:
-    msg: Toggle protection from normal damage (creative players may still break stands)
-disableslots: 
-  msg: Disable Slots
-  description: 
-    msg: Enable and disable equipment lock
+    msg: Toggle protection from normal damage
+lockequipment:
+  msg: Lock Equipment
+  description:
+    msg: Block normal gear changes
 gravity: 
   msg: Gravity
   description: 
@@ -224,7 +228,7 @@ disabled:
 equipslot: 
   msg: <x> Slot
   description: 
-    msg: Drag your <x> into the slot below
+    msg: Click below to swap with cursor
     helm: Helmet
     chest: Chestplate
     pants: Pants

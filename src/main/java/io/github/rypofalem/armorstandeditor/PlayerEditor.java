@@ -19,13 +19,13 @@
 
 package io.github.rypofalem.armorstandeditor;
 
-import io.github.rypofalem.armorstandeditor.menu.EquipmentMenu;
 import io.github.rypofalem.armorstandeditor.menu.Menu;
 import io.github.rypofalem.armorstandeditor.modes.AdjustmentMode;
 import io.github.rypofalem.armorstandeditor.modes.ArmorStandData;
 import io.github.rypofalem.armorstandeditor.modes.Axis;
 import io.github.rypofalem.armorstandeditor.modes.CopySlots;
 import io.github.rypofalem.armorstandeditor.modes.EditMode;
+import io.github.rypofalem.armorstandeditor.modes.EquipmentLocks;
 import io.github.rypofalem.armorstandeditor.modes.ScaleAdjustment;
 
 import java.util.ArrayList;
@@ -59,7 +59,6 @@ public class PlayerEditor {
   ArmorStand target;
   ArrayList < ArmorStand > targetList = null;
   int targetIndex = 0;
-  EquipmentMenu equipMenu;
   long lastCancelled = 0;
 
   public PlayerEditor(UUID uuid, ArmorStandEditorPlugin plugin) {
@@ -158,8 +157,8 @@ public class PlayerEditor {
     case ROTATE:
       rotate(armorStand);
       break;
-    case DISABLESLOTS:
-      toggleDisableSlots(armorStand);
+    case LOCKEQUIPMENT:
+      toggleLockEquipment(armorStand);
       break;
     case EQUIPMENT:
       openEquipment(armorStand);
@@ -183,8 +182,7 @@ public class PlayerEditor {
   }
 
   private void openEquipment(ArmorStand armorStand) {
-    equipMenu = new EquipmentMenu(this, armorStand);
-    equipMenu.open();
+    getManager().openEquipmentMenu(this, armorStand);
   }
 
   public void reverseEditArmorStand(ArmorStand armorStand) {
@@ -293,6 +291,10 @@ public class PlayerEditor {
     AttributeInstance scale = armorStand.getAttribute(Attribute.SCALE);
     if (scale != null && data.scale != null) scale.setBaseValue(ScaleAdjustment.clamp(data.scale));
     armorStand.setInvulnerable(data.invulnerable);
+    // The lock mode has its own permission; paste must not bypass it.
+    if (getPlayer().hasPermission("asedit.lockequipment")) {
+      EquipmentLocks.restore(armorStand, data.equipmentLocks);
+    }
     if (this.getPlayer().getGameMode() == GameMode.CREATIVE) {
       armorStand.getEquipment().setHelmet(data.head);
       armorStand.getEquipment().setChestplate(data.body);
@@ -304,8 +306,11 @@ public class PlayerEditor {
     sendMessage("pasted", "" + (copySlots.currentSlot + 1));
   }
 
-  private void toggleDisableSlots(ArmorStand armorStand) {
-    //TODO
+  private void toggleLockEquipment(ArmorStand armorStand) {
+    if (!getPlayer().hasPermission("asedit.lockequipment")) return;
+    boolean locked = !EquipmentLocks.isFullyLocked(armorStand);
+    EquipmentLocks.setFullyLocked(armorStand, locked);
+    sendMessage("setlockequipment", locked ? "on" : "off");
   }
 
   private void adjustScale(ArmorStand armorStand, int direction) {

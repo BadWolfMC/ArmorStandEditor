@@ -37,8 +37,8 @@ steps and compare to the baseline before filing a regression.
 CI and CodeQL, and that all eight targeted Phase 2 test groups passed on the
 server. Earlier local compilation remained unavailable (Java 21 only, no
 cached Gradle distribution/network). Exact Paper build and protection-plugin
-versions were not supplied. `/ase gui` is a subsequent convenience change
-and has not been built or tested in game yet.
+versions were not supplied. `/ase gui` was subsequently CI-tested and verified in game; see the follow-up
+section below.
 
 **Permission matrix to verify** (check via LuckPerms/equivalent, using actual
 BadWolfMC permission groups, not an assumed role hierarchy):
@@ -56,8 +56,8 @@ BadWolfMC permission groups, not an assumed role hierarchy):
 the air menu. `asedit.basic` was already the command/GUI/actual-edit gate;
 Phase 2 uses it for all tool events. **Confirm this explicit policy with the
 real permission assignments before accepting Phase 2.** No new permission
-nodes, defaults or inheritance were introduced. `asedit.disableslots` is
-currently only a nonfunctional placeholder, left for Phase 4.
+nodes, defaults or inheritance were introduced. `asedit.disableslots` was a nonfunctional placeholder replaced in Phase 4
+with `asedit.lockequipment` (default `op`), pending live verification.
 
 ### Targeted steps (run in Survival and Creative as applicable)
 
@@ -165,38 +165,84 @@ assumed equivalent; recheck when relevant protection configuration changes.
       duplicate items; note if a scenario is an existing baseline limitation.
 - [ ] Locale selection and English fallback handle existing and new labels.
 
-## New-feature gates (Phase 3 implemented locally; server tests pending)
+## Phase 3 — accepted 2026-10-31
 
-- [ ] Scale: default 1.0 base; `SCALE` mode left-click increases and right-click
+BadWolfMC administration reported green CI/CodeQL and completion of all ten
+Phase 3 live test groups. The groups covered the checks below; the more
+specialized damage-event-only integration scenario remains an explicitly
+unverified compatibility edge, not a claim of universal protection support.
+
+- [x] Scale: default 1.0 base; `SCALE` mode left-click increases and right-click
       decreases by exactly 0.1 (Fine) or 0.5 (Coarse) regardless of selected axis;
       repeat ≥100 times without drift. At 0.1/15.0, further clicks clamp.
-- [ ] Scale: modifiers previously attached to a stand remain present after
+- [x] Scale: modifiers previously attached to a stand remain present after
       adjustment and paste. The base clamps even if modifiers change the final
       effective scale. `SIZE` still changes only `isSmall()`, and vice versa.
-- [ ] Scale: check normal, small, 0.1× and 15.0× stands, including direct hits,
+- [x] Scale: check normal, small, 0.1× and 15.0× stands, including direct hits,
       alternate targeting and GUI via `/ase gui` in tight spaces. Verify values
       after world save/restart and after copy/paste between different stands.
-- [ ] Copy/paste: copy all poses/boolean attributes and scale plus invulnerability
+- [x] Copy/paste: copy all poses/boolean attributes and scale plus invulnerability
       between two stands; verify destination attribute modifiers are not erased,
       and copy slots 1–9 retain independent snapshots.
-- [ ] Invulnerability: toggle on/off in both click directions; left-click again
+- [x] Invulnerability: toggle on/off in both click directions; left-click again
       with flint on an invulnerable stand and check toggling works; test other
       modes (Scale, poses, movement, rotation, equipment) on that stand too.
-- [ ] Invulnerability: confirm survival-mode damage resistance, creative-mode
+- [x] Invulnerability: confirm survival-mode damage resistance, creative-mode
       destruction behavior without flint, and no double edits or destruction
       with authorized flint in creative. Verify persistence after restart.
-- [ ] Permissions: players without `asedit.basic` get vanilla flint behavior;
+- [x] Permissions: players without `asedit.basic` get vanilla flint behavior;
       editor permissions do not bypass protected-region denial for either click
       direction, including pre-attack on invulnerable stands and stored targets.
-      Test a protection plugin that denies through damage-only events separately
+      Damage-only event integration remains a separate, unverified edge case
       (early attack edits may not be vetoed by damage-only integrations).
-- [ ] Existing behavior: clicking blocks, attacking unrelated entities, hand
+- [x] Existing behavior: clicking blocks, attacking unrelated entities, hand
       swapping, sneak-scrolling, name tags, `/ase gui`, GUI icons and language
       English fallback still behave as established in Phase 2.
-- [ ] Lock Equipment: normal interaction cannot add/remove/swap any of six
-      equipment slots, even for a builder; authorized GUI still can.
-- [ ] Lock Equipment: unlocked state restores normal vanilla manipulation;
-      copy/paste retains state.
+## Phase 4 — equipment locks and GUI safety (pending CI and live verification)
+
+- [ ] `/ase mode lockequipment` and GUI icon appear for `asedit.lockequipment`;
+      players without it cannot select the mode, including mixed-case commands.
+      `asedit.basic` remains required. Old `disableslots` mode is unavailable.
+- [ ] Lock all six slots (helmet, chest, leggings, boots, main hand, offhand):
+      normal survival/creative interactions cannot add, remove or swap items,
+      even for a builder; toggle off restores normal vanilla manipulation.
+- [ ] After a full lock, save/restart the server and confirm it persists.
+      An intentionally partially locked stand becomes fully locked on toggle;
+      a fully locked stand becomes unlocked on the next toggle.
+- [ ] Copy/paste lock state between stands and across copy slots 1–9, including
+      per-slot partial lock states and unrelated `ADDING` locks. A player with
+      basic-only permission must NOT change locks by pasting a locked snapshot.
+- [ ] With equipment locking ON, open Equipment GUI using left/right flint.
+      In both creative and survival, pick up a helmet/held item using the empty
+      cursor, then insert/swap another item; changes appear immediately on the
+      stand. Right click intentionally performs the same full-stack swap.
+- [ ] While the GUI is open, stand gear stays equipped and visible to another
+      player. Normal close, Escape, opening another inventory or `/ase gui`
+      never returns gear to an old snapshot or overwrites external changes.
+- [ ] Try shift-click from the bottom inventory, number keys, offhand swap,
+      double-click collection, middle-click/creative clone, dropping via keys,
+      and dragging across icon/preview slots. No icon or duplicate preview
+      item can enter a player's inventory or be left in a filler slot.
+- [ ] Leave an item on the cursor; test normal close and disconnect (including
+      full player inventory), then reconnect. Confirm item counts, without
+      assuming cursor persistence; check for drops, loss or duplication.
+- [ ] Remove/despawn the stand while its Equipment GUI is open; click preview
+      slots. No ghost gear can be withdrawn. Similarly test a permission revocation
+      or newly protected region while GUI remains open: all swaps fail closed.
+- [ ] Open two Equipment GUIs to the same stand from two authorized accounts;
+      alternate swaps. Both previews update, and the actual stand equipment is
+      authoritative; neither editor can duplicate or overwrite stale gear.
+- [ ] Disable/reload the plugin normally while a GUI is open; inventory closes,
+      gear remains on the stand, and no pending close-time commit occurs.
+      A power loss across distinct player/entity disk saves is not guaranteed
+      transactional; assess separately rather than claiming absolute immunity.
+- [ ] Check updated GUI grouping and short lore, the `asedit.lockequipment`
+      permission default, English fallback on non-English languages, normal
+      item naming and equipment copy/paste, and the complete Phase 2/3 flint,
+      targeting, protection, Scale and Invulnerability regression baseline.
+
+## Later-feature gates (not begun)
+
 - [ ] No Movement: toggle controls ordinary movement, not direct authorized
       editing; verify save/reload and any PDC fallback.
 - [ ] Marker: stand can still be selected and Marker reversed without relying
@@ -277,4 +323,5 @@ build was not independently recorded. Full regression remains a Phase 7 gate.
 | October 31, 2026 / Phase 2 acceptance | GitHub Actions Gradle and CodeQL (operator confirmed), Paper 26.3 | PASS (targeted gameplay) | All eight targeted test groups passed, including region protection, permission groups and both hands. Offhand-only flint does nothing by design. CMI-specific non-interactable/invulnerable settings did not prevent ASE edits; not accepted as a protection boundary. |
 | October 31, 2026 / GUI command follow-up | GitHub Actions/CodeQL green; live Paper test (operator confirmed) | PASS (command smoke test) | `/ase gui` opens the editor as intended. Granular denial/console/target-block cases are retained for the final regression pass. |
 
-| October 31, 2026 / Phase 3 prepared | Local source changes; Java 25/Paper server pending | PENDING (CI and gameplay) | Scale and Invulnerability modes, copy/paste, and invulnerable pre-attack path implemented. Run the Phase 3 checks above and confirm CI/CodeQL before accepting. |
+| October 31, 2026 / Phase 3 acceptance | CI and CodeQL green; Paper 26.3 in-game checks (operator reported) | PASS (10 targeted groups) | Scale bounds, directions, copy/paste and modifiers, invulnerability persistence/creative-mode editing, permissions and regions, legacy interactions and fallback language all passed. |
+| October 31, 2026 / Phase 4 prepared | Static source review; Gradle unavailable offline (Java 21 installed) | PENDING | Equipment locks, safe live Equipment GUI preview and grouped property layout prepared; CI/CodeQL and live acceptance required. |

@@ -55,7 +55,7 @@ public class Menu {
 
     ItemStack xAxis = null, yAxis = null, zAxis = null, coarseAdj = null, fineAdj = null, rotate = null, place = null, headPos = null,
       rightArmPos = null, bodyPos = null, leftArmPos = null, reset = null, showArms = null, visibility = null, size = null,
-      rightLegPos = null, equipment = null, leftLegPos = null, disableSlots = null, gravity = null, plate = null, scale = null, invulnerable = null, copy = null, paste = null,
+      rightLegPos = null, equipment = null, leftLegPos = null, lockEquipment = null, gravity = null, plate = null, scale = null, invulnerable = null, copy = null, paste = null,
       slot1 = null, slot2 = null, slot3 = null, slot4 = null, help = null;
 
     xAxis = createIcon(new ItemStack(Material.RED_WOOL, 1),
@@ -115,8 +115,8 @@ public class Menu {
     invulnerable = createIcon(new ItemStack(Material.TOTEM_OF_UNDYING),
       "invulnerable", "mode invulnerable");
 
-    if (pe.getPlayer().hasPermission("asedit.disableslots")) {
-      disableSlots = createIcon(new ItemStack(Material.BARRIER), "disableslots", "mode disableslots");
+    if (pe.getPlayer().hasPermission("asedit.lockequipment")) {
+      lockEquipment = createIcon(new ItemStack(Material.IRON_BARS), "lockequipment", "mode lockequipment");
     }
 
     gravity = createIcon(new ItemStack(Material.SAND), "gravity", "mode gravity");
@@ -153,62 +153,44 @@ public class Menu {
 
     help = createIcon(new ItemStack(Material.NETHER_STAR), "helpgui", "help");
 
-    ItemStack[] items = {
-      xAxis,
-      yAxis,
-      zAxis,
-      null,
-      coarseAdj,
-      fineAdj,
-      null,
-      rotate,
-      place,
-      null,
-      headPos,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      rightArmPos,
-      bodyPos,
-      leftArmPos,
-      reset,
-      scale,
-      null,
-      showArms,
-      visibility,
-      size,
-      rightLegPos,
-      equipment,
-      leftLegPos,
-      null,
-      null,
-      null,
-      invulnerable,
-      gravity,
-      plate,
-      null,
-      copy,
-      paste,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      slot1,
-      slot2,
-      slot3,
-      slot4,
-      null,
-      null,
-      null,
-      null,
-      help
-    };
+    // Position tools (top), pose controls (left), and stand properties (right).
+    // Keep property slots together for the Phase 5/6 additions; in particular,
+    // Size and Scale are neighbors and remain separate editing modes.
+    ItemStack[] items = new ItemStack[54];
+    items[0] = xAxis;
+    items[1] = yAxis;
+    items[2] = zAxis;
+    items[4] = coarseAdj;
+    items[5] = fineAdj;
+    items[7] = rotate;
+    items[8] = place;
+
+    items[10] = headPos;
+    items[18] = rightArmPos;
+    items[19] = bodyPos;
+    items[20] = leftArmPos;
+    items[21] = reset;
+    items[27] = rightLegPos;
+    items[28] = equipment;
+    items[29] = leftLegPos;
+
+    items[23] = showArms;
+    items[24] = visibility;
+    items[25] = size;
+    items[26] = scale;
+    items[32] = invulnerable;
+    items[33] = gravity;
+    items[34] = plate;
+    items[35] = lockEquipment;
+    // Slots 41-43 remain available for future property toggles.
+
+    items[37] = copy;
+    items[38] = paste;
+    items[45] = slot1;
+    items[46] = slot2;
+    items[47] = slot3;
+    items[48] = slot4;
+    items[53] = help;
     menuInv.setContents(items);
   }
 

@@ -20,10 +20,8 @@
 package io.github.rypofalem.armorstandeditor;
 
 import io.github.rypofalem.armorstandeditor.language.Language;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -91,16 +89,14 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
     }
   }
 
+  @Override
+  public void onDisable() {
+    if (editorManager != null) editorManager.closeEditorMenus();
+  }
+
   private void updateConfig(String folder, String config) {
     if (!new File(getDataFolder() + File.separator + folder + config).exists()) {
       saveResource(folder + config, false);
-    }
-  }
-
-  @Override
-  public void onDisable() {
-    for (Player player: Bukkit.getServer().getOnlinePlayers()) {
-      if (player.getOpenInventory().getTopInventory().getHolder() == editorManager.getMenuHolder()) player.closeInventory();
     }
   }
 

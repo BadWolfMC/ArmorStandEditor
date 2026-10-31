@@ -152,7 +152,7 @@ public class CommandEx implements CommandExecutor{
 			for(EditMode mode : EditMode.values()){
 				if(mode.toString().toLowerCase().contentEquals(args[1].toLowerCase())){
 					if(mode == EditMode.INVISIBLE && !checkPermission(player, "invisible", true)) return;
-					if(mode == EditMode.DISABLESLOTS && !checkPermission(player, "disableslots", true)) return;
+					if(mode == EditMode.LOCKEQUIPMENT && !checkPermission(player, "lockequipment", true)) return;
 					plugin.editorManager.getPlayerEditor(player.getUniqueId()).setMode(mode);
 					return;
 				}

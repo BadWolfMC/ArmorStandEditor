@@ -20,6 +20,7 @@
 package io.github.rypofalem.armorstandeditor;
 
 import io.github.rypofalem.armorstandeditor.menu.ASEHolder;
+import io.github.rypofalem.armorstandeditor.menu.EquipmentMenu;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,7 +46,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -54,6 +57,7 @@ import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
@@ -65,6 +69,8 @@ public class PlayerEditorManager implements Listener {
   private HashMap < UUID, PlayerEditor > players;
   private ASEHolder menuHolder = new ASEHolder(); //Inventory holder that owns the main ase menu inventories for the plugin
   private ASEHolder equipmentHolder = new ASEHolder(); //Inventory holder that owns the equipment menu
+  // Each equipment inventory is owned by one player; never commit a shared or stale view.
+  private final HashMap<UUID, EquipmentMenu> equipmentMenus = new HashMap<>();
   double coarseAdj;
   double fineAdj;
   double coarseMov;
@@ -281,45 +287,131 @@ public class PlayerEditorManager implements Listener {
     }
   }
 
-  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-  void onPlayerMenuSelect(InventoryClickEvent e) {
-    if (e.getInventory().getHolder() == null) return;
-    if (!(e.getInventory().getHolder() instanceof ASEHolder)) return;
-    if (e.getInventory().getHolder() == menuHolder) {
-      e.setCancelled(true);
-      ItemStack item = e.getCurrentItem();
-      if (item != null && item.hasItemMeta()) {
-        Player player = (Player) e.getWhoClicked();
-        String command = item.getItemMeta().getPersistentDataContainer().get(plugin.getIconKey(), PersistentDataType.STRING);
-        if (command != null) {
-          player.performCommand(command);
-          return;
+  /**
+   * Equipment preview slots are NOT ordinary inventory slots: all vanilla top
+   * inventory changes are cancelled. An explicit slot swap is committed to the
+   * stand immediately, so closing a GUI can never discard equipment escrow.
+   */
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+  void onPlayerMenuSelect(InventoryClickEvent event) {
+    Inventory top = event.getView().getTopInventory();
+    if (top.getHolder() == menuHolder) {
+      boolean denied = event.isCancelled();
+      event.setCancelled(true);
+      if (!denied && event.getClickedInventory() == top &&
+          event.getWhoClicked() instanceof Player player &&
+          player.hasPermission("asedit.basic")) {
+        ItemStack item = event.getCurrentItem();
+        if (item != null && item.hasItemMeta()) {
+          String command = item.getItemMeta().getPersistentDataContainer()
+              .get(plugin.getIconKey(), PersistentDataType.STRING);
+          if (command != null) player.performCommand(command);
         }
       }
+      return;
     }
-    if (e.getInventory().getHolder() == equipmentHolder) {
-      ItemStack item = e.getCurrentItem();
-      if (item == null) return;
-      if (item.getItemMeta() == null) return;
-      if (item.getItemMeta().getPersistentDataContainer().has(plugin.getIconKey(), PersistentDataType.STRING)) {
-        e.setCancelled(true);
+    if (top.getHolder() != equipmentHolder) return;
+
+    if (!(event.getWhoClicked() instanceof Player player)) {
+      event.setCancelled(true);
+      return;
+    }
+    EquipmentMenu menu = equipmentMenus.get(player.getUniqueId());
+    if (menu == null || menu.getInventory() != top ||
+        !menu.getOwner().equals(player.getUniqueId())) {
+      event.setCancelled(true); // A stale inventory must never release its preview items.
+      return;
+    }
+
+    if (event.getClickedInventory() != top) {
+      // Allow normal cursor management in the player's own inventory, but
+      // prevent shift-transfer, double-click collection, number-key exchange,
+      // hotbar/offhand swaps, item drops and creative cloning.
+      if (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.RIGHT) {
+        event.setCancelled(true);
       }
+      return;
     }
+
+    boolean denied = event.isCancelled();
+    event.setCancelled(true);
+    if (denied || !EquipmentMenu.isEquipmentSlot(event.getRawSlot()) ||
+        (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.RIGHT)) return;
+
+    ArmorStand stand = menu.getStand();
+    if (!canEditEquipment(player, stand)) {
+      // Close later: closing an inventory inside its click event is unsafe.
+      if (!stand.isValid()) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+          if (player.isOnline() && player.getOpenInventory().getTopInventory() == top) {
+            player.closeInventory();
+          }
+        });
+      }
+      return;
+    }
+
+    menu.swapWithCursor(event.getRawSlot(), event.getCursor());
+    for (EquipmentMenu other : equipmentMenus.values()) {
+      if (other != menu && other.getStand() == stand) other.refreshPreview();
+    }
+    player.updateInventory(); // Resync the cancelled click and the new cursor item.
   }
 
-  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-  void onPlayerMenuClose(InventoryCloseEvent e) {
-    if (e.getInventory().getHolder() == null) return;
-    if (!(e.getInventory().getHolder() instanceof ASEHolder)) return;
-    if (e.getInventory().getHolder() == equipmentHolder) {
-      PlayerEditor pe = players.get(e.getPlayer().getUniqueId());
-      pe.equipMenu.equipArmorstand();
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+  void onPlayerMenuDrag(InventoryDragEvent event) {
+    Inventory top = event.getView().getTopInventory();
+    if (top.getHolder() != equipmentHolder && top.getHolder() != menuHolder) return;
+    // Dragging over preview/icon slots can never transfer the displayed copies.
+    for (int slot : event.getRawSlots()) {
+      if (slot < top.getSize()) {
+        event.setCancelled(true);
+        return;
+      }
     }
   }
 
   @EventHandler(priority = EventPriority.MONITOR)
-  void onPlayerLogOut(PlayerQuitEvent e) {
-    removePlayerEditor(e.getPlayer().getUniqueId());
+  void onPlayerMenuClose(InventoryCloseEvent event) {
+    if (event.getInventory().getHolder() != equipmentHolder) return;
+    EquipmentMenu menu = equipmentMenus.get(event.getPlayer().getUniqueId());
+    if (menu != null && menu.getInventory() == event.getInventory()) {
+      equipmentMenus.remove(event.getPlayer().getUniqueId());
+    }
+    // No delayed commit: equipment was never cleared from the stand, and only
+    // successful, authorized cursor swaps were applied to it while open.
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR)
+  void onPlayerLogOut(PlayerQuitEvent event) {
+    equipmentMenus.remove(event.getPlayer().getUniqueId());
+    removePlayerEditor(event.getPlayer().getUniqueId());
+  }
+
+  public EquipmentMenu openEquipmentMenu(PlayerEditor editor, ArmorStand stand) {
+    EquipmentMenu menu = new EquipmentMenu(editor, stand);
+    equipmentMenus.put(editor.getUUID(), menu);
+    menu.open();
+    return menu;
+  }
+
+  /** Recheck access at the time of each swap, not only when opening the GUI. */
+  private boolean canEditEquipment(Player player, ArmorStand stand) {
+    return player.hasPermission("asedit.basic") && stand.isValid() &&
+        player.getWorld() == stand.getWorld() &&
+        player.getLocation().distanceSquared(stand.getLocation()) <= 100 &&
+        canEdit(player, stand);
+  }
+
+  public void closeEditorMenus() {
+    // Do not leave either inventory type interactive after listeners disable.
+    for (Player player : Bukkit.getOnlinePlayers()) {
+      Inventory top = player.getOpenInventory().getTopInventory();
+      if (top.getHolder() == equipmentHolder || top.getHolder() == menuHolder) {
+        player.closeInventory();
+      }
+    }
+    equipmentMenus.clear();
   }
 
   public PlayerEditor getPlayerEditor(UUID uuid) {
