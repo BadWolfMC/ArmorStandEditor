@@ -9,8 +9,10 @@
 **Phase 2 accepted on `develop` (2026-10-31)**, including `/ase gui`;
 **Phase 3 accepted on `develop` (2026-10-31)** after green GitHub CI/CodeQL
 and all ten live regression groups passed (BadWolfMC administration).
-**Phase 4 implementation is prepared locally and awaits CI and live tests.**
-Phases 5–7 have not started; `main` remains the stable reference.
+**Phase 4 accepted on `develop` (2026-10-31):** operator confirmed green
+CI and creative/survival locking and copy/paste matrix, with no further
+regressions observed. **Phase 5 is implemented locally, awaiting CI and live
+Paper verification.** Phases 6–7 have not started; `main` remains stable.
 Gradle CI and CodeQL passed for Phase 1; the checksum-verified Gradle Wrapper
 JAR is present in the repository; the Gradle-built plugin loaded and basic
 editing worked on a test server. The complete release regression suite is a
@@ -261,10 +263,12 @@ still gates use of the lock mode. Future property slots remain reserved,
 without implementing later-phase features. English lore is kept to short,
 practical lines and existing locale fallback is retained.
 
-**Exit (pending):** No accidental vanilla changes while locked; authorized
-GUI editing works in creative and survival; no loss/duplication across normal
-close, disconnect, stand removal and plugin disable; CI/CodeQL and protected
-region checks pass.
+**Exit (accepted 2026-10-31):** After the compilation and GUI icon fixes,
+CI remained green; the operator confirmed the lock and copy/paste matrix in
+Creative and Survival, normal authorized Equipment GUI editing and no other
+regressions. The later copy/paste fix preserves Creative-only item duplication
+safety; the original suspected regression was due to testing in Survival.
+Extraordinary hard-crash atomicity is not claimed.
 
 ### Phase 5 — Targeting, Marker and No Movement
 
@@ -273,7 +277,31 @@ region checks pass.
 - Add Marker and No Movement toggles; verify persistence and protection rules.
 - Keep the normal editor highlight where it remains applicable.
 
-**Exit:** All affected stands can be selected, changed, and recovered safely.
+**Phase 5 implementation (local, pending CI and live acceptance):** The
+existing sneak-free hand-swap selection and new main-GUI **Select Target**
+action cycle armor stands intersecting a 10-block sight ray. Sight checks
+include expanded non-marker bounding boxes and a deliberately approximate
+visual volume for zero-hitbox Marker stands; solid blocks block selection.
+The GUI includes **Apply to Target** and **Reverse on Target** controls, so
+editors can use a selected stand's current editing mode without a vanilla
+entity click. Actions require `asedit.basic`, a valid stand still in view,
+and fresh protection-plugin checks. These are GUI-only actions, not new `/ase`
+commands. Marker's approximate selection radius is intentionally generous,
+so confirm overlapping, behind-wall and nearby-stand cases on Paper.
+
+Marker (`setMarker`/`isMarker`) and No Movement (`setCanMove`/`canMove`) are
+new independent modes; both are included in copy/paste. An explicitly frozen
+stand records a single `no_movement` BYTE in its own PDC, restored when chunk
+entities load and for chunks already loaded on plugin enable. Re-enabling
+movement removes that PDC marker; untouched armor stands remain unaffected.
+Gravity, Ticking, Marker and ordinary authorized teleport-based placement
+remain independent. Marker does not introduce a special tick/highlight system.
+All new labels use existing English fallback. Phase 6's Ticking toggle and
+Phase 7's native Brigadier registration remain untouched.
+
+**Exit (pending):** All affected stands can be selected, changed, and recovered
+safely, including after saves/restarts and through protection plugins; verify
+CI/CodeQL, creative and survival behavior and no regression to Phases 2–4.
 
 ### Phase 6 — No-tick control and measurements
 

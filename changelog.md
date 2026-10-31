@@ -5,7 +5,21 @@ Keep entries concise and limited to work that has actually been completed.
 
 ## Unreleased
 
-### Phase 4 — Equipment locks and Equipment GUI safety (prepared locally; acceptance pending)
+### Phase 5 — Targeting, Marker and No Movement (prepared locally; acceptance pending)
+- Added independent Marker and No Movement controls to the grouped GUI and
+  `/ase mode`, with copy/paste snapshots for both properties. Marker uses the
+  native API; No Movement uses `setCanMove` and an entity PDC override restored
+  on chunk entity loads (and loaded chunks on plugin enable), without changing
+  untouched stands.
+- Reworked hand-swap selection to search a 10-block sight ray for tiny,
+  overlapping, scaled and hitbox-less marker stands, stopping at obstructing
+  blocks. Added **Select Target**, **Apply to Target** and **Reverse on Target**
+  GUI buttons so Marker can be reversed without physically clicking the stand.
+  Editor authorization and region protection are rechecked on explicit edits.
+- Added concise English fallback strings and a focused Phase 5 checklist.
+  **Pending:** Java 25 CI/CodeQL and in-game selection/persistence/protection tests.
+
+### Phase 4 — Equipment locks and Equipment GUI safety (accepted 2026-10-31)
 - Replaced unfinished `DISABLESLOTS` with `LOCKEQUIPMENT` using both native
   equipment lock types on all six slots. Added `asedit.lockequipment` (default
   `op`) to the descriptor; mode selection and pasting lock state require it.
@@ -23,10 +37,12 @@ Keep entries concise and limited to work that has actually been completed.
   Creative-mode equipment before restoring destination equipment locks, and
   explicitly tell non-Creative editors why gear was skipped. Preserved the
   original Creative-only duplication guard and `asedit.lockequipment` gate.
-  This needs live retesting; no claim of an independently reproduced root cause.
-- **Pending:** Java 25 CI, CodeQL and live Paper tests for protected regions,
-  interruption handling, creative/survival, cursor/full-inventory behavior,
-  and the existing editing/interaction baseline.
+  Subsequent tests established the original reported missing equipment was
+  due to Survival-mode copying restrictions, not a reproducible lock regression.
+- **Accepted:** CI/CodeQL remained green; BadWolfMC administration reported
+  passing equipment-lock and copy/paste matrices in Creative/Survival, with no
+  other regressions detected. Unusual crash and concurrency scenarios remain
+  tracked for the full Phase 7 gate.
 
 ### Phase 3 — Scale and Invulnerability (accepted on `develop` 2026-10-31)
 - Added independent `SCALE` editing mode, adjusting the SCALE attribute's base

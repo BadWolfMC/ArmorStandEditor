@@ -198,14 +198,14 @@ unverified compatibility edge, not a claim of universal protection support.
 - [x] Existing behavior: clicking blocks, attacking unrelated entities, hand
       swapping, sneak-scrolling, name tags, `/ase gui`, GUI icons and language
       English fallback still behave as established in Phase 2.
-## Phase 4 — equipment locks and GUI safety (pending CI and live verification)
+## Phase 4 — equipment locks and GUI safety (accepted 2026-10-31)
 
-- [ ] Lock Equipment displays as a Trial Key immediately after Invulnerability,
+- [x] Lock Equipment displays as a Trial Key immediately after Invulnerability,
       followed by Gravity and Baseplate; the GUI icon is visible to basic-only
       editors, but selecting it (or `/ase mode lockequipment`) requires
       `asedit.lockequipment`, including with mixed-case commands.
       `asedit.basic` remains required. Old `disableslots` mode is unavailable.
-- [ ] Lock all six slots (helmet, chest, leggings, boots, main hand, offhand):
+- [x] Lock all six slots (helmet, chest, leggings, boots, main hand, offhand):
       normal survival/creative interactions cannot add, remove or swap items,
       even for a builder; toggle off restores normal vanilla manipulation.
 - [ ] After a full lock, save/restart the server and confirm it persists.
@@ -214,7 +214,7 @@ unverified compatibility edge, not a claim of universal protection support.
 - [ ] Copy/paste lock state between stands and across copy slots 1–9, including
       per-slot partial lock states and unrelated `ADDING` locks. A player with
       basic-only permission must NOT change locks by pasting a locked snapshot.
-- [ ] **Phase 4 copy/paste follow-up:** in Creative mode copy a fully equipped
+- [x] **Phase 4 copy/paste follow-up:** in Creative mode copy a fully equipped
       stand and paste to an empty stand for all four source/destination lock
       combinations (locked→locked, locked→unlocked, unlocked→locked,
       unlocked→unlocked). Verify all six items match the source, as well as
@@ -226,7 +226,7 @@ unverified compatibility edge, not a claim of universal protection support.
       properties paste, no items are created, and the Creative-only gear
       warning appears. Do not treat this longstanding anti-duplication rule
       as successful equipment restoration in Survival.
-- [ ] With equipment locking ON, open Equipment GUI using left/right flint.
+- [x] With equipment locking ON, open Equipment GUI using left/right flint.
       In both creative and survival, pick up a helmet/held item using the empty
       cursor, then insert/swap another item; changes appear immediately on the
       stand. Right click intentionally performs the same full-stack swap.
@@ -255,12 +255,59 @@ unverified compatibility edge, not a claim of universal protection support.
       item naming and equipment copy/paste, and the complete Phase 2/3 flint,
       targeting, protection, Scale and Invulnerability regression baseline.
 
-## Later-feature gates (not begun)
+**Phase 4 closeout (2026-10-31):** Operator confirmed CI/CodeQL green,
+locking and equipment-paste matrix in both Creative and Survival (with
+Creative-only equipment pasting understood), and no other detected regressions.
+The original Phase 4 source correction, GUI visibility fix and equipment
+paste ordering/snapshot follow-up are included. Unchecked extraordinary cases
+remain in the checklist for the full Phase 7 regression gate; these are not
+separately claimed as witnessed.
 
-- [ ] No Movement: toggle controls ordinary movement, not direct authorized
-      editing; verify save/reload and any PDC fallback.
-- [ ] Marker: stand can still be selected and Marker reversed without relying
-      on the ordinary entity hitbox; selection works for overlapping stands.
+## Phase 5 — Targeting, Marker and No Movement (pending CI/live validation)
+
+- [ ] After switching modes normally, look toward an ordinary armor stand and
+      press the hand-swap key with flint; target selection still works. Press
+      again to cycle overlapping stands, and verify that protected stands are
+      not made selectable by the new targeting code.
+- [ ] Select **Marker** from the GUI or `/ase mode marker`, enable it, then
+      recover the same stand without its normal hitbox: look toward it, use
+      hand-swap or the **Select Target** GUI icon, then **Apply to Target** to
+      disable Marker. Repeat on invisible, small, Scale 0.1, Scale 15 and
+      overlapping stands, in Creative and Survival.
+- [ ] With a selected stand in view, **Apply to Target** performs the left-click
+      direction, **Reverse on Target** the right-click direction (especially
+      Scale, Placement and Rotate); toggles apply only once. With no target,
+      out of range or looking away, no edit occurs and a warning appears.
+- [ ] Test walls, floors and dense displays: no targeting through solid blocks,
+      no accidental editing of a different stand, and repeat cycling when
+      selection changes or an entity is removed.
+- [ ] Verify normal flint on blocks and unrelated entities, sneak-scroll,
+      the offhand policy, `/ase gui`, original modes and Equipment GUI still
+      behave as they did after Phases 2–4.
+- [ ] Test **No Movement** ON/OFF with and without Gravity: collisions/pushing
+      are blocked when frozen, while intentional placement/rotation/poses and
+      equipment editing remain possible; thaw does not unintentionally move
+      the stand or alter gravity.
+- [ ] Restart the server and reload chunks with frozen and unfrozen stands.
+      Frozen stands remain frozen via the PDC setting, thawed/untouched stands
+      move normally, and other plugins' armor stands are not automatically
+      modified. Repeat across unloaded chunks and plugin startup.
+- [ ] Copy/paste Marker and No Movement alongside Scale, Invulnerability and
+      locks, including a marker source/destination and locked/unlocked target;
+      Creative pastes equipment, Survival skips it with existing warning.
+- [ ] As a player lacking `asedit.basic`, ensure target GUI, selecting, editing
+      or toggling does not work, and ordinary flint remains vanilla. With a
+      region-protection denial or permissions revoked after target selection,
+      **Apply to Target** and reverse are denied and properties remain intact.
+- [ ] Confirm English fallback text and new property positions (41=Marker,
+      42=No Movement; 43 reserved for Ticking), with normal highlight retained
+      on ordinary ticking stands; do not test Phase 6 no-ticking functionality
+      as an implemented feature.
+- [ ] CI (Gradle Java 25, JAR verifier, CodeQL) and live Paper 26.3 tests pass;
+      record acceptance before proceeding to Phase 6.
+
+## Later-feature gates (Phases 6–7)
+
 - [ ] Ticking: new toggle is opt-in; default/previous state isn't changed on
       plugin load; explicit change survives save/restart.
 - [ ] Ticking: pose/equipment updates reach the client with ticking disabled.
@@ -336,6 +383,7 @@ build was not independently recorded. Full regression remains a Phase 7 gate.
 | October 30, 2026 / Phase 2 preparation | Source and static review on `develop`; Gradle offline attempt failed (no distribution/network; Java 21 runtime) | BLOCKED (local build) | Permission/event fixes prepared for CI and in-game acceptance. |
 | October 31, 2026 / Phase 2 acceptance | GitHub Actions Gradle and CodeQL (operator confirmed), Paper 26.3 | PASS (targeted gameplay) | All eight targeted test groups passed, including region protection, permission groups and both hands. Offhand-only flint does nothing by design. CMI-specific non-interactable/invulnerable settings did not prevent ASE edits; not accepted as a protection boundary. |
 | October 31, 2026 / GUI command follow-up | GitHub Actions/CodeQL green; live Paper test (operator confirmed) | PASS (command smoke test) | `/ase gui` opens the editor as intended. Granular denial/console/target-block cases are retained for the final regression pass. |
-
 | October 31, 2026 / Phase 3 acceptance | CI and CodeQL green; Paper 26.3 in-game checks (operator reported) | PASS (10 targeted groups) | Scale bounds, directions, copy/paste and modifiers, invulnerability persistence/creative-mode editing, permissions and regions, legacy interactions and fallback language all passed. |
 | October 31, 2026 / Phase 4 prepared | Static source review; Gradle unavailable offline (Java 21 installed) | PENDING | Equipment locks, safe live Equipment GUI preview and grouped property layout prepared; CI/CodeQL and live acceptance required. |
+| October 31, 2026 / Phase 4 closeout | CI/CodeQL (operator confirmed), Paper 26.3 live | PASS (targeted) | Lock matrix and equipment paste across Creative/Survival passed; no additional regressions observed. Hard-crash atomicity and separately unchecked extraordinary scenarios remain final regression gates. |
+| October 31, 2026 / Phase 5 prepared | Offline source review and structural checks; Java 25 Gradle unavailable locally | PENDING | Marker/No Movement, sight-line target selection and GUI apply controls; Paper behavior requires CI and live validation. |

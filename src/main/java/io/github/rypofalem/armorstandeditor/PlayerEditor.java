@@ -27,6 +27,7 @@ import io.github.rypofalem.armorstandeditor.modes.CopySlots;
 import io.github.rypofalem.armorstandeditor.modes.EditMode;
 import io.github.rypofalem.armorstandeditor.modes.EquipmentLocks;
 import io.github.rypofalem.armorstandeditor.modes.ScaleAdjustment;
+import io.github.rypofalem.armorstandeditor.modes.MovementControl;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -135,6 +136,12 @@ public class PlayerEditor {
       break;
     case INVULNERABLE:
       toggleInvulnerable(armorStand);
+      break;
+    case MARKER:
+      toggleMarker(armorStand);
+      break;
+    case NOMOVEMENT:
+      toggleNoMovement(armorStand);
       break;
     case INVISIBLE:
       toggleVisible(armorStand);
@@ -291,6 +298,8 @@ public class PlayerEditor {
     AttributeInstance scale = armorStand.getAttribute(Attribute.SCALE);
     if (scale != null && data.scale != null) scale.setBaseValue(ScaleAdjustment.clamp(data.scale));
     armorStand.setInvulnerable(data.invulnerable);
+    armorStand.setMarker(data.marker);
+    MovementControl.setCanMove(armorStand, data.canMove, plugin.getMovementKey());
     // Equipment duplication has historically been Creative-only. Keep this
     // guard: allowing Survival pastes would create items from snapshots.
     if (getPlayer().getGameMode() == GameMode.CREATIVE) {
@@ -334,6 +343,17 @@ public class PlayerEditor {
   private void toggleInvulnerable(ArmorStand armorStand) {
     armorStand.setInvulnerable(!armorStand.isMarkedInvulnerable());
     sendMessage("setinvulnerable", armorStand.isMarkedInvulnerable() ? "on" : "off");
+  }
+
+  private void toggleMarker(ArmorStand armorStand) {
+    armorStand.setMarker(!armorStand.isMarker());
+    sendMessage("setmarker", armorStand.isMarker() ? "on" : "off");
+  }
+
+  private void toggleNoMovement(ArmorStand armorStand) {
+    boolean wasMovable = armorStand.canMove();
+    MovementControl.setCanMove(armorStand, !wasMovable, plugin.getMovementKey());
+    sendMessage("setnomovement", wasMovable ? "on" : "off");
   }
 
   private void toggleGravity(ArmorStand armorStand) {
@@ -436,13 +456,24 @@ public class PlayerEditor {
   }
 
   // Resolve without side effects so protection can be checked before editing.
-  ArmorStand resolveTarget(ArmorStand armorStand) {
-    if (target == null ||
-      !target.isValid() ||
-      target.getWorld() != getPlayer().getWorld() ||
-      target.getLocation().distanceSquared(getPlayer().getLocation()) > 100)
-      return armorStand;
+  ArmorStand selectedTarget() {
+    if (target == null || !target.isValid() ||
+        target.getWorld() != getPlayer().getWorld()) {
+      target = null;
+      targetList = null;
+      return null;
+    }
     return target;
+  }
+
+  ArmorStand resolveTarget(ArmorStand armorStand) {
+    ArmorStand selected = selectedTarget();
+    // Preserve the existing 10-block base-distance rule for physical clicks.
+    // GUI target actions separately use the visible ray hit distance, which
+    // allows editing the upper portion of very large scaled Marker stands.
+    return selected == null ||
+        selected.getLocation().distanceSquared(getPlayer().getLocation()) > 100
+        ? armorStand : selected;
   }
 
   ArmorStand attemptTarget(ArmorStand armorStand) {

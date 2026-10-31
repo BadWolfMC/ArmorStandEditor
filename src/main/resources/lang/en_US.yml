@@ -27,6 +27,8 @@ setmode:
   scale: Adjust Scale
   invulnerable: Toggle Invulnerability
   lockequipment: Toggle Lock Equipment
+  marker: Toggle Marker
+  nomovement: Toggle No Movement
   gravity: Toggle Gravity
   baseplate: Toggle BasePlate
   placement: Placement
@@ -55,6 +57,16 @@ setlockequipment:
   msg: Equipment lock turned <x>.
   on: on
   off: off
+setmarker:
+  msg: Marker turned <x>.
+  on: on
+  off: off
+setnomovement:
+  msg: No Movement turned <x>.
+  on: on
+  off: off
+notargetinview:
+  msg: Look toward a selected armor stand within 10 blocks first.
 setgravity: 
   msg: Gravity turned <x>.
   on: on
@@ -187,6 +199,26 @@ lockequipment:
   msg: Lock Equipment
   description:
     msg: Block normal gear changes
+marker:
+  msg: Marker
+  description:
+    msg: Toggle the stand's tiny hitbox
+nomovement:
+  msg: No Movement
+  description:
+    msg: Prevent ordinary movement
+selecttarget:
+  msg: Select Target
+  description:
+    msg: Find or cycle stands in your sights
+applytarget:
+  msg: Apply to Target
+  description:
+    msg: Apply selected mode (left click)
+reversetarget:
+  msg: Reverse on Target
+  description:
+    msg: Apply reverse (right click)
 gravity: 
   msg: Gravity
   description: 

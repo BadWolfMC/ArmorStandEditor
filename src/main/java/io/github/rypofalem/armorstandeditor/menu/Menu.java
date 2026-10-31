@@ -56,7 +56,8 @@ public class Menu {
     ItemStack xAxis = null, yAxis = null, zAxis = null, coarseAdj = null, fineAdj = null, rotate = null, place = null, headPos = null,
       rightArmPos = null, bodyPos = null, leftArmPos = null, reset = null, showArms = null, visibility = null, size = null,
       rightLegPos = null, equipment = null, leftLegPos = null, lockEquipment = null, gravity = null, plate = null, scale = null, invulnerable = null, copy = null, paste = null,
-      slot1 = null, slot2 = null, slot3 = null, slot4 = null, help = null;
+      slot1 = null, slot2 = null, slot3 = null, slot4 = null, help = null,
+      marker = null, noMovement = null, selectTarget = null, applyTarget = null, reverseTarget = null;
 
     xAxis = createIcon(new ItemStack(Material.RED_WOOL, 1),
       "xaxis", "axis x");
@@ -121,6 +122,9 @@ public class Menu {
     lockEquipment = createIcon(new ItemStack(Material.TRIAL_KEY),
       "lockequipment", "mode lockequipment");
 
+    marker = createIcon(new ItemStack(Material.ARMOR_STAND), "marker", "mode marker");
+    noMovement = createIcon(new ItemStack(Material.EXPOSED_COPPER_CHAIN), "nomovement", "mode nomovement");
+
     gravity = createIcon(new ItemStack(Material.SAND), "gravity", "mode gravity");
 
     plate = createIcon(new ItemStack(Material.STONE_SLAB, 1),
@@ -154,6 +158,9 @@ public class Menu {
       "copyslot", "slot 4", "4");
 
     help = createIcon(new ItemStack(Material.NETHER_STAR), "helpgui", "help");
+    selectTarget = createIcon(new ItemStack(Material.SPYGLASS), "selecttarget", "target select");
+    applyTarget = createIcon(new ItemStack(Material.LIME_DYE), "applytarget", "target apply");
+    reverseTarget = createIcon(new ItemStack(Material.ORANGE_DYE), "reversetarget", "target reverse");
 
     // Position tools (top), pose controls (left), and stand properties (right).
     // Keep property slots together for the Phase 5/6 additions; in particular,
@@ -184,7 +191,9 @@ public class Menu {
     items[33] = lockEquipment;
     items[34] = gravity;
     items[35] = plate;
-    // Slots 41-43 remain available for future property toggles.
+    items[41] = marker;
+    items[42] = noMovement;
+    // Slot 43 remains reserved for the future Ticking toggle.
 
     items[37] = copy;
     items[38] = paste;
@@ -192,6 +201,9 @@ public class Menu {
     items[46] = slot2;
     items[47] = slot3;
     items[48] = slot4;
+    items[49] = selectTarget;
+    items[50] = applyTarget;
+    items[51] = reverseTarget;
     items[53] = help;
     menuInv.setContents(items);
   }

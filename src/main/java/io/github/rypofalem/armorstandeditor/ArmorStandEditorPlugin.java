@@ -30,6 +30,7 @@ import java.io.File;
 
 public class ArmorStandEditorPlugin extends JavaPlugin {
   private NamespacedKey iconKey;
+  private NamespacedKey movementKey;
   private static ArmorStandEditorPlugin instance;
   private CommandEx execute;
   private Language lang;
@@ -80,6 +81,7 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
     execute = new CommandEx(this);
     getCommand("ase").setExecutor(execute);
     getServer().getPluginManager().registerEvents(editorManager, this);
+    editorManager.restoreLoadedMovement();
 
     hasSpigot = true;
     try {
@@ -132,11 +134,13 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
     return true;
   }
 
+  public NamespacedKey getMovementKey() {
+    if (movementKey == null) movementKey = new NamespacedKey(this, "no_movement");
+    return movementKey;
+  }
+
   public NamespacedKey getIconKey() {
     if (iconKey == null) iconKey = new NamespacedKey(this, "command_icon");
     return iconKey;
   }
 }
-//todo: 
-//Access to "DisabledSlots" data (probably simplified just a toggle enable/disable)
-//Access to the "Marker" switch (so you can make the hitbox super small)

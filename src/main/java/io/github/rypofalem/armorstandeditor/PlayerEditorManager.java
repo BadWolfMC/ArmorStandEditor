@@ -21,8 +21,10 @@ package io.github.rypofalem.armorstandeditor;
 
 import io.github.rypofalem.armorstandeditor.menu.ASEHolder;
 import io.github.rypofalem.armorstandeditor.menu.EquipmentMenu;
+import io.github.rypofalem.armorstandeditor.modes.MovementControl;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -34,6 +36,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.FluidCollisionMode;
+import org.bukkit.World;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -56,11 +60,14 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
 import static net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText;
 
 //Manages PlayerEditors and Player Events related to editing armorstands
@@ -182,39 +189,96 @@ public class PlayerEditorManager implements Listener {
     // The event's offhand item represents the proposed post-swap state.
     if (!player.hasPermission("asedit.basic") || !plugin.isEditTool(event.getOffHandItem())) return;
     event.setCancelled(true);
+    selectTarget(player);
+  }
+
+  /** Cycle all stands intersecting the player's sight line, including zero-hitbox markers.
+   * Physical block occlusion is checked first; permission/protection remains authoritative.
+   */
+  public void selectTarget(Player player) {
+    if (!player.hasPermission("asedit.basic")) return;
     getPlayerEditor(player.getUniqueId()).setTarget(getTargets(player));
   }
 
-  private ArrayList < ArmorStand > getTargets(Player player) {
-    Location eyeLaser = player.getEyeLocation();
-    Vector direction = player.getLocation().getDirection();
-    ArrayList < ArmorStand > armorStands = new ArrayList < > ();
+  private ArrayList<ArmorStand> getTargets(Player player) {
+    Location eye = player.getEyeLocation();
+    Vector direction = eye.getDirection().normalize();
+    final double range = 10.0;
+    final double padding = 0.35;
+    RayTraceResult block = player.getWorld().rayTraceBlocks(
+        eye, direction, range, FluidCollisionMode.NEVER, true);
+    double maxDistance = block == null ? range :
+        Math.min(range, block.getHitPosition().distance(eye.toVector()));
 
-    final double STEPSIZE = .5;
-    final Vector STEP = direction.multiply(STEPSIZE);
-    final double RANGE = 10;
-    final double LASERRADIUS = .3;
-    List < Entity > nearbyEntities = player.getNearbyEntities(RANGE, RANGE, RANGE);
-    if (nearbyEntities.isEmpty()) return null;
+    record Candidate(ArmorStand stand, double distance) {}
+    ArrayList<Candidate> candidates = new ArrayList<>();
+    // A 15x stand can extend around 30 blocks above its feet; search its
+    // base too when the player aims at the visible upper portion.
+    for (Entity entity : player.getWorld().getNearbyEntities(eye, range, range + 30, range)) {
+      if (!(entity instanceof ArmorStand stand) || !stand.isValid()) continue;
+      // The marker has no regular bounding box. Use an approximate visual
+      // column with minimum width for tiny or highly scaled stands.
+      double hit = Double.POSITIVE_INFINITY;
+      if (!stand.isMarker()) {
+        BoundingBox box = stand.getBoundingBox().expand(padding);
+        RayTraceResult intersection = box.rayTrace(eye.toVector(), direction, maxDistance);
+        if (intersection != null) hit = intersection.getHitPosition().distance(eye.toVector());
+      } else {
+        Vector base = stand.getLocation().toVector();
+        double height = stand.isSmall() ? 1.0 : 2.0;
+        org.bukkit.attribute.AttributeInstance attr =
+            stand.getAttribute(org.bukkit.attribute.Attribute.SCALE);
+        if (attr != null) height *= Math.max(0.1, attr.getValue());
+        BoundingBox visual = new BoundingBox(
+            base.getX() - 0.45, base.getY() - 0.35, base.getZ() - 0.45,
+            base.getX() + 0.45, base.getY() + height + 0.35, base.getZ() + 0.45);
+        RayTraceResult intersection = visual.rayTrace(eye.toVector(), direction, maxDistance);
+        if (intersection != null) hit = intersection.getHitPosition().distance(eye.toVector());
+      }
+      if (Double.isFinite(hit) && canEdit(player, stand)) candidates.add(new Candidate(stand, hit));
+    }
+    candidates.sort(Comparator.comparingDouble(Candidate::distance)
+        .thenComparing(c -> c.stand().getUniqueId().toString()));
+    ArrayList<ArmorStand> result = new ArrayList<>();
+    for (Candidate candidate : candidates) result.add(candidate.stand());
+    return result;
+  }
 
-    for (double i = 0; i < RANGE; i += STEPSIZE) {
-      List < Entity > nearby = (List < Entity > ) player.getWorld().getNearbyEntities(eyeLaser, LASERRADIUS, LASERRADIUS, LASERRADIUS);
-      if (!nearby.isEmpty()) {
-        boolean endLaser = false;
-        for (Entity e: nearby) {
-          if (e instanceof ArmorStand) {
-            if (canEdit(player, (ArmorStand) e)) {
-              armorStands.add((ArmorStand) e);
-              endLaser = true;
-            }
+  /** GUI-only action. No fake clicked entity or damage event is manufactured. */
+  public void applySelectedTarget(Player player, boolean reverse) {
+    if (!player.hasPermission("asedit.basic")) return;
+    PlayerEditor editor = getPlayerEditor(player.getUniqueId());
+    ArmorStand selected = editor.selectedTarget();
+    if (selected == null || !getTargets(player).contains(selected)) {
+      editor.sendMessage("notargetinview", "warn", null);
+      return;
+    }
+    if (!canEdit(player, selected)) return;
+    editor.cancelOpenMenu();
+    if (reverse) editor.reverseEditArmorStand(selected);
+    else editor.editArmorStand(selected);
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR)
+  void onEntitiesLoad(EntitiesLoadEvent event) {
+    for (Entity entity : event.getEntities()) {
+      if (entity instanceof ArmorStand stand) {
+        MovementControl.restore(stand, plugin.getMovementKey());
+      }
+    }
+  }
+
+  /** Restore explicit freeze settings on chunks that were loaded before enable. */
+  void restoreLoadedMovement() {
+    for (World world : Bukkit.getWorlds()) {
+      for (org.bukkit.Chunk chunk : world.getLoadedChunks()) {
+        for (Entity entity : chunk.getEntities()) {
+          if (entity instanceof ArmorStand stand) {
+            MovementControl.restore(stand, plugin.getMovementKey());
           }
         }
-        if (endLaser) break;
       }
-      if (eyeLaser.getBlock().getType().isSolid()) break;
-      eyeLaser.add(STEP);
     }
-    return armorStands;
   }
 
   boolean canEdit(Player player, ArmorStand as) {
@@ -305,7 +369,15 @@ public class PlayerEditorManager implements Listener {
         if (item != null && item.hasItemMeta()) {
           String command = item.getItemMeta().getPersistentDataContainer()
               .get(plugin.getIconKey(), PersistentDataType.STRING);
-          if (command != null) player.performCommand(command);
+          if ("ase target select".equals(command)) {
+            selectTarget(player);
+          } else if ("ase target apply".equals(command)) {
+            applySelectedTarget(player, false);
+          } else if ("ase target reverse".equals(command)) {
+            applySelectedTarget(player, true);
+          } else if (command != null) {
+            player.performCommand(command);
+          }
         }
       }
       return;
