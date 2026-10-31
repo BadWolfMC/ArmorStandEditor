@@ -291,19 +291,26 @@ public class PlayerEditor {
     AttributeInstance scale = armorStand.getAttribute(Attribute.SCALE);
     if (scale != null && data.scale != null) scale.setBaseValue(ScaleAdjustment.clamp(data.scale));
     armorStand.setInvulnerable(data.invulnerable);
+    // Equipment duplication has historically been Creative-only. Keep this
+    // guard: allowing Survival pastes would create items from snapshots.
+    if (getPlayer().getGameMode() == GameMode.CREATIVE) {
+      armorStand.getEquipment().setHelmet(data.head.clone());
+      armorStand.getEquipment().setChestplate(data.body.clone());
+      armorStand.getEquipment().setLeggings(data.legs.clone());
+      armorStand.getEquipment().setBoots(data.feetsies.clone());
+      armorStand.getEquipment().setItemInMainHand(data.rightHand.clone());
+      armorStand.getEquipment().setItemInOffHand(data.leftHand.clone());
+    }
+    // Restore lock state only after updating the gear, so a destination's
+    // previous/new restrictions cannot interfere with equipment application.
     // The lock mode has its own permission; paste must not bypass it.
     if (getPlayer().hasPermission("asedit.lockequipment")) {
       EquipmentLocks.restore(armorStand, data.equipmentLocks);
     }
-    if (this.getPlayer().getGameMode() == GameMode.CREATIVE) {
-      armorStand.getEquipment().setHelmet(data.head);
-      armorStand.getEquipment().setChestplate(data.body);
-      armorStand.getEquipment().setLeggings(data.legs);
-      armorStand.getEquipment().setBoots(data.feetsies);
-      armorStand.getEquipment().setItemInMainHand(data.rightHand);
-      armorStand.getEquipment().setItemInOffHand(data.leftHand);
-    }
     sendMessage("pasted", "" + (copySlots.currentSlot + 1));
+    if (getPlayer().getGameMode() != GameMode.CREATIVE) {
+      sendMessage("pasteequipmentcreativeonly", "warn", null);
+    }
   }
 
   private void toggleLockEquipment(ArmorStand armorStand) {

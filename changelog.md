@@ -19,6 +19,11 @@ Keep entries concise and limited to work that has actually been completed.
   Invulnerability beside Lock Equipment (Trial Key). The lock icon now remains
   visible to all editors, while the lock permission still controls selection;
   updated concise English fallback descriptions and instructions.
+- Phase 4 copy/paste follow-up: take independent ItemStack snapshots, apply
+  Creative-mode equipment before restoring destination equipment locks, and
+  explicitly tell non-Creative editors why gear was skipped. Preserved the
+  original Creative-only duplication guard and `asedit.lockequipment` gate.
+  This needs live retesting; no claim of an independently reproduced root cause.
 - **Pending:** Java 25 CI, CodeQL and live Paper tests for protected regions,
   interruption handling, creative/survival, cursor/full-inventory behavior,
   and the existing editing/interaction baseline.

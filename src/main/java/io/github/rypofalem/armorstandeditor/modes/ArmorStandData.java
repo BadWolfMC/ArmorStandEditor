@@ -22,6 +22,7 @@ package io.github.rypofalem.armorstandeditor.modes;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.EulerAngle;
 
@@ -63,11 +64,15 @@ public final class ArmorStandData {
     this.gravity = as.hasGravity();
     this.showArms = as.hasArms();
     this.visible = as.isVisible();
-    this.head = as.getEquipment().getHelmet();
-    this.body = as.getEquipment().getChestplate();
-    this.legs = as.getEquipment().getLeggings();
-    this.feetsies = as.getEquipment().getBoots();
-    this.rightHand = as.getEquipment().getItemInMainHand();
-    this.leftHand = as.getEquipment().getItemInOffHand();
+    this.head = copyItem(as.getEquipment().getHelmet());
+    this.body = copyItem(as.getEquipment().getChestplate());
+    this.legs = copyItem(as.getEquipment().getLeggings());
+    this.feetsies = copyItem(as.getEquipment().getBoots());
+    this.rightHand = copyItem(as.getEquipment().getItemInMainHand());
+    this.leftHand = copyItem(as.getEquipment().getItemInOffHand());
+  }
+
+  private static ItemStack copyItem(ItemStack item) {
+    return item == null ? new ItemStack(Material.AIR) : item.clone();
   }
 }

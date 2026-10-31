@@ -214,6 +214,18 @@ unverified compatibility edge, not a claim of universal protection support.
 - [ ] Copy/paste lock state between stands and across copy slots 1–9, including
       per-slot partial lock states and unrelated `ADDING` locks. A player with
       basic-only permission must NOT change locks by pasting a locked snapshot.
+- [ ] **Phase 4 copy/paste follow-up:** in Creative mode copy a fully equipped
+      stand and paste to an empty stand for all four source/destination lock
+      combinations (locked→locked, locked→unlocked, unlocked→locked,
+      unlocked→unlocked). Verify all six items match the source, as well as
+      poses, Size/Scale and Invulnerability; repeat with source gear later
+      changed to confirm the stored snapshot is independent.
+- [ ] Repeat equipment paste with a basic-only editor lacking
+      `asedit.lockequipment`: gear pastes in Creative mode, but the destination's
+      lock state must remain unchanged. Test independently in Survival:
+      properties paste, no items are created, and the Creative-only gear
+      warning appears. Do not treat this longstanding anti-duplication rule
+      as successful equipment restoration in Survival.
 - [ ] With equipment locking ON, open Equipment GUI using left/right flint.
       In both creative and survival, pick up a helmet/held item using the empty
       cursor, then insert/swap another item; changes appear immediately on the

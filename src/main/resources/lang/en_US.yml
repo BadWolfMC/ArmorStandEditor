@@ -67,6 +67,8 @@ copied:
   msg: ArmorStand state copied to slot <x>.
 pasted: 
   msg: ArmorStand state pasted from slot <x>.
+pasteequipmentcreativeonly:
+  msg: Equipment was not pasted (Creative mode only).
 target:
   msg: ArmorStand target locked.
 notarget:
