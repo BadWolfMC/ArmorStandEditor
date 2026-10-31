@@ -9,8 +9,10 @@ Read the [wiki](https://github.com/RypoFalem/ArmorStandEditor/wiki) for more inf
 Players with `asedit.basic` can run `/ase gui` to open the normal editor menu
 without having to find a clear line of sight or hold the flint tool. Clicking
 air with flint still opens the same menu; block clicks remain vanilla. This
-command is a Phase 2 follow-up and requires CI and in-game verification before
-deployment.
+command is an accepted Phase 2 follow-up: GitHub CI and CodeQL remained
+green, and BadWolfMC administration confirmed it works in game (2026-10-31).
+The remaining command tree will be moved to native Paper Brigadier with tab
+completion in Phase 7; see `docs/modernization-plan.md`.
 
 ## Building this BadWolfMC fork
 

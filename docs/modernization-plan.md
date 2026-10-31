@@ -6,16 +6,17 @@
 > project is finished. Keep the concise, permanent history in `changelog.md`.
 
 **Status:** Phase 0 complete (production baseline confirmed); **Phase 1 complete
-on `develop` (2026-10-30)**. **Phase 2 accepted on `develop`
-(2026-10-31): CI, CodeQL and targeted live tests passed (operator confirmed).**
-A small follow-up adds `/ase gui` for confined spaces; its build and runtime
-checks are pending. The Phase 3 feature work has not started.
+on `develop` (2026-10-30)**; **Phase 2 closed on `develop` (2026-10-31)**,
+including the `/ase gui` follow-up (CI, CodeQL and live functionality confirmed
+by BadWolfMC administration). Phase 3 implementation is prepared locally
+and awaits CI and Paper testing.
 Gradle CI and CodeQL passed for Phase 1; the checksum-verified
 Gradle Wrapper JAR is present in the repository; the Gradle-built plugin loaded
 and basic editing worked on a test server (reported by BadWolfMC administration).
 The full gameplay regression suite was not repeated for this build-only phase;
 affected cases will be tested during subsequent phases, with full coverage at
-Phase 7. Phases 3–7 not started. `main` remains the stable reference pending merge.
+Phase 7. Phases 4–7 not started; Phase 3 is not yet accepted. `main`
+remains the stable reference pending merge.
 **Baseline:** BadWolfMC fork of RypoFalem/ArmorStandEditor; source archive reviewed
 2026-10-30; baseline `develop` commit `09da6ec` (also `main` in the supplied
 archive). Phase 0 Maven CI produced `armorstandeditor-26.3.jar` as an artifact,
@@ -176,11 +177,13 @@ editor. CMI armor-stand invulnerability/non-interactable settings did not
 block ASE editing in this environment; do not treat them as a region edit
 prohibition or infer compatibility with every protection plugin.
 
-**Confined-space GUI follow-up (pending CI/live check):** `/ase gui` opens
+**Confined-space GUI follow-up (accepted 2026-10-31):** `/ase gui` opens
 the existing menu with `asedit.basic`, without needing a flint click or
 changing block events. Retain air-only click access, because the deprecated
 Material interactability categorization is incomplete. No extra permission
-node or GUI layout change.
+node or GUI layout change. BadWolfMC administration confirmed green CI/CodeQL
+and successful in-game use. Individual command-denial and edge-case tests
+not separately reported remain in the regression checklist for later rechecks.
 
 ### Phase 3 — Scale and Invulnerability
 
@@ -189,7 +192,28 @@ node or GUI layout change.
 - Test adjustment bounds and increments on small and normal stands.
 - Ensure invulnerable stands remain editable (including left-click editing).
 
-**Exit:** Both properties persist and edit correctly without harming other modes.
+**Implementation prepared locally (2026-10-31; NOT YET ACCEPTED):** Added
+`SCALE` and `INVULNERABLE` modes to the existing GUI and command enum; scale
+changes the SCALE attribute *base value* by exactly 1 or 5 tenths, with bounds
+0.1–15.0. Existing attribute modifiers remain attached and can influence the
+effective final scale. Size remains independent. Copy/paste saves the scale base
+value and marked invulnerability; paste preserves the destination's modifier set
+and clamps the copied base into the supported range.
+
+Invulnerable stands receive a narrowly scoped `PrePlayerAttackEntityEvent`
+handler because their attacks may not generate `EntityDamageByEntityEvent`.
+The pre-attack handler ignores cancelled or non-attackable attacks, requires
+master permission and main-hand tool, checks the Phase 2 synthetic interaction
+protection gates for clicked/selected stands, and cancels the attack to avoid
+repeated edits in creative mode. Non-invulnerable stands retain the Phase 2
+damage handler. **Integration caveat:** plugins that enforce protection *only*
+by cancelling damage events (and not the pre-attack or synthetic interaction
+events) cannot necessarily prevent an early invulnerable-stand edit; verify with
+the production protection plugins. No plugin can promise generalized damage-
+only protection compatibility without an integration strategy.
+
+**Exit (pending):** CI/CodeQL and in-game tests confirm both properties persist
+and edit correctly without harming existing modes, permissions or protections.
 
 ### Phase 4 — Equipment locks and Equipment GUI safety
 
@@ -226,15 +250,35 @@ works; equipment remains safe across interrupted sessions.
 **Exit:** Ticking can be toggled safely; no permanent highlight; behavioral
 tradeoffs are documented and performance claims supported by measurements.
 
-### Phase 7 — Targeted cleanup and release
+### Phase 7 — Command modernization, targeted cleanup and release
 
-- Address narrowly scoped deprecated API usage, translation fallbacks,
+- **Migrate `/ase` to Paper's native Brigadier command API** using the plugin
+  lifecycle `LifecycleEvents.COMMANDS` registrar. `plugin.yml` remains the
+  plugin descriptor; no switch to `paper-plugin.yml` is needed. Replace the
+  existing Bukkit command executor and `plugin.yml` command declaration in a
+  controlled migration, without registering `/ase` twice.
+- Provide client-side tab suggestions and argument validation for `gui`,
+  `help`, `?`, `mode`, `axis`, `adj` and `slot`, including enum values and slots
+  1–9. Preserve existing command spellings, case-insensitive inputs, actual
+  effects, and user-facing help/feedback where applicable. Do not suggest
+  unfinished/unauthorized modes, including `DISABLESLOTS` prior to its Phase 4
+  replacement. Newly introduced mode names from Phases 3–6 must be included.
+- Apply the existing `asedit.basic` master gate and mode-specific permissions
+  consistently to execution and suggestions. Verify console/non-player
+  behavior and denied subcommands; visibility must not replace server-side
+  authorization. Add no permissions or command aliases unless justified.
+- Check startup, server reload/command re-registration, command help and
+  possible `/ase` name collisions. Retain the current `plugin.yml` plugin
+  identity, Java packages, Gradle Kotlin DSL, Java 25 and Paper `26.3.build.+`.
+- Address other narrowly scoped deprecated API usage, translation fallbacks,
   permission metadata, tests and docs. Preserve existing public interfaces.
 - Run the complete regression checklist, review the changelog, and prepare a
   release candidate from `develop`; do not assume release without testing.
 
-**Exit:** Verified release artifact and concise changelog entry; archive or
-remove these temporary planning/checklist files when their work is complete.
+**Exit:** Native Brigadier registration and permission-aware completions are
+verified on Paper 26.3; release artifact and concise changelog entry pass all
+acceptance checks. Archive or remove the temporary planning/checklist files
+when their work is complete.
 
 ## Open verification points (not settled implementation facts)
 
@@ -242,6 +286,10 @@ remove these temporary planning/checklist files when their work is complete.
   `${project.version}` token; the legacy CI `dist` upload used a nonexistent
   `target/armorstandeditor.jar` path. Phase 1 uses targeted Gradle resource
   expansion and one verified artifact upload; Gradle and CodeQL CI passed.
+- **Deferred to Phase 7 (explicit commitment):** Native Brigadier command
+  registration and tab completion for the entire `/ase` command tree. Do not
+  introduce a legacy `TabCompleter` as a temporary substitute during Phase 3.
+  Paper supports lifecycle registration from a `JavaPlugin` with `plugin.yml`.
 - **Phase 2 implementation decision:** `asedit.basic` is the unified master
   gate; the one undeclared `asedit.use` check was removed from air-menu access.
   Existing BadWolfMC permission-group assignments must still be reviewed in

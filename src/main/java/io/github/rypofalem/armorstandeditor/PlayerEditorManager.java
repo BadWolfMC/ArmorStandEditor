@@ -20,6 +20,7 @@
 package io.github.rypofalem.armorstandeditor;
 
 import io.github.rypofalem.armorstandeditor.menu.ASEHolder;
+import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -89,6 +90,21 @@ public class PlayerEditorManager implements Listener {
   private boolean canUseTool(Player player) {
     return player.hasPermission("asedit.basic") &&
         plugin.isEditTool(player.getInventory().getItemInMainHand());
+  }
+
+  // Invulnerable stands may never produce a damage event. Only handle these
+  // attacks early; ordinary stands continue through the Phase 2 damage handler.
+  // Cancelling here also avoids a second damage event/edit in creative mode.
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  void onInvulnerableStandAttack(PrePlayerAttackEntityEvent event) {
+    Player player = event.getPlayer();
+    if (!event.willAttack() || !canUseTool(player) ||
+        !(event.getAttacked() instanceof ArmorStand as) || !as.isMarkedInvulnerable()) return;
+
+    // No unprotected fallback: the original synthetic interaction checks
+    // still gate the clicked stand AND any selected target.
+    event.setCancelled(true);
+    applyLeftTool(player, as);
   }
 
   @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

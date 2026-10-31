@@ -5,6 +5,22 @@ Keep entries concise and limited to work that has actually been completed.
 
 ## Unreleased
 
+### Phase 3 — Scale and Invulnerability (prepared locally; acceptance pending)
+- Added independent `SCALE` editing mode, adjusting the SCALE attribute's base
+  from 0.1× to 15.0× in 0.1× Fine or 0.5× Coarse increments without cumulative
+  floating-point drift. Original Size mode and existing scale modifiers remain
+  independent.
+- Added invulnerability toggle with `setInvulnerable` and
+  `isMarkedInvulnerable`; retained ordinary damage-event editing and added a
+  pre-attack fallback only for marked-invulnerable armor stands, using the
+  existing authorization and interaction-based protection gates.
+- Included both properties in copy/paste, placed both modes in unused GUI slots,
+  and provided English messages used as fallbacks for other locales.
+- **Verification pending:** GitHub CI/CodeQL and live Paper testing, especially
+  creative-mode attacks, large/tiny stands and protection plugins that rely
+  exclusively on damage-event cancellation.
+
+
 ### Phase 2 — Flint interactions and authorization (accepted on `develop`)
 - Restricted editor event handling to players with `asedit.basic` and the
   configured main-hand tool; unauthorized flint, hand-swaps and sneak-scroll
@@ -29,7 +45,7 @@ Offhand-only flint intentionally remains inactive. CMI-protected stands marked
 non-interactable/invulnerable can still be edited by authorized ASE users;
 this is documented as an integration limitation, not an ASE region bypass.
 
-### Phase 2 follow-up — GUI access in tight spaces (pending CI/live acceptance)
+### Phase 2 follow-up — GUI access in tight spaces (accepted on `develop`)
 - Added `/ase gui` for players with the existing `asedit.basic` permission.
   It opens the unchanged editor inventory without requiring flint or an air
   click. No new permission nodes, block-event handling, or GUI changes.
@@ -37,8 +53,10 @@ this is documented as an integration limitation, not an ASE region bypass.
   incomplete `Material.isInteractable()` classification to intercept block
   clicks.
 
-**Verification:** Source review and diff checks only; GitHub Actions and
-Paper in-game confirmation pending for this follow-up.
+**Verification (2026-10-31):** BadWolfMC administration confirmed CI and
+CodeQL remained green and `/ase gui` worked in game. Native Brigadier command
+registration and tab completion are intentionally deferred to Phase 7; no
+command migration was implemented in Phase 2.
 
 
 ### Maintenance

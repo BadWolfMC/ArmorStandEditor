@@ -31,7 +31,7 @@ steps and compare to the baseline before filing a regression.
       arms/baseplate, equipment, rename, copy/paste and reset behavior.
 - [ ] Record basic restart/persistence behavior in a disposable test world.
 
-## Phase 2 — Flint interactions and authorization (accepted; command follow-up pending)
+## Phase 2 — Flint interactions and authorization (closed 2026-10-31)
 
 **Live status (2026-10-31):** BadWolfMC administration confirmed green Gradle
 CI and CodeQL, and that all eight targeted Phase 2 test groups passed on the
@@ -130,17 +130,22 @@ observed test run.
       state leaks between players.
 - [x] Creative and survival behaviors match intended editor permissions.
 
-### Phase 2 confined-space GUI follow-up — pending verification
+### Phase 2 confined-space GUI follow-up — accepted 2026-10-31
 
-- [ ] GitHub Actions Gradle build, package verifier and CodeQL pass with
-      the `/ase gui` command addition.
-- [ ] Editor with `asedit.basic` opens the same GUI using `/ase gui` while
-      looking at stone, a chest, and a door, and with no flint held.
-- [ ] User lacking `asedit.basic` cannot use `/ase gui`; console use is denied.
-- [ ] Air-click GUI remains unchanged; flint on blocks remains vanilla,
-      including all interactable blocks and attacks against unrelated entities.
-- [ ] Offhand-only flint still has no editing effect, while the hand-swap
-      targeting shortcut still functions.
+BadWolfMC administration confirmed that CI remained green and `/ase gui`
+worked as intended in game. These are operator-reported results, not a fresh
+independent test run. Keep more granular cases that were not separately
+reported for the final regression pass.
+
+- [x] GitHub Actions Gradle build and CodeQL remain green with `/ase gui`.
+- [x] Authorized editor can open the existing GUI with `/ase gui`, including
+      when air-click access is impractical (operator-confirmed behavior).
+- [ ] Recheck `/ase gui` with no flint held while looking at stone, a chest,
+      and a door; confirm identical inventory layout (not separately recorded).
+- [ ] Explicitly test that a user lacking `asedit.basic` and the console
+      cannot invoke `/ase gui` (not separately recorded).
+- [ ] Recheck air-click GUI, vanilla block interactions, unrelated entity
+      attacks, offhand-only flint and swap-targeting after any command changes.
 
 **Known compatibility observation (2026-10-31):** CMI's non-interactable and
 invulnerable armor-stand protection did not stop an authorized ASE editor,
@@ -160,14 +165,34 @@ assumed equivalent; recheck when relevant protection configuration changes.
       duplicate items; note if a scenario is an existing baseline limitation.
 - [ ] Locale selection and English fallback handle existing and new labels.
 
-## New-feature gates (initially NOT YET IMPLEMENTED)
+## New-feature gates (Phase 3 implemented locally; server tests pending)
 
-- [ ] Scale: 0.1 minimum, 15.0 maximum, 1.0 base; fine/coarse changes; bounds
-      don't drift; normal and small stands stay independent.
-- [ ] Scale: copying/pasting and reload retain values; target very small and
-      large stands successfully.
-- [ ] Invulnerability: on/off, persistence, creative behavior and authorized
-      left/right editing work without unintended entity damage.
+- [ ] Scale: default 1.0 base; `SCALE` mode left-click increases and right-click
+      decreases by exactly 0.1 (Fine) or 0.5 (Coarse) regardless of selected axis;
+      repeat ≥100 times without drift. At 0.1/15.0, further clicks clamp.
+- [ ] Scale: modifiers previously attached to a stand remain present after
+      adjustment and paste. The base clamps even if modifiers change the final
+      effective scale. `SIZE` still changes only `isSmall()`, and vice versa.
+- [ ] Scale: check normal, small, 0.1× and 15.0× stands, including direct hits,
+      alternate targeting and GUI via `/ase gui` in tight spaces. Verify values
+      after world save/restart and after copy/paste between different stands.
+- [ ] Copy/paste: copy all poses/boolean attributes and scale plus invulnerability
+      between two stands; verify destination attribute modifiers are not erased,
+      and copy slots 1–9 retain independent snapshots.
+- [ ] Invulnerability: toggle on/off in both click directions; left-click again
+      with flint on an invulnerable stand and check toggling works; test other
+      modes (Scale, poses, movement, rotation, equipment) on that stand too.
+- [ ] Invulnerability: confirm survival-mode damage resistance, creative-mode
+      destruction behavior without flint, and no double edits or destruction
+      with authorized flint in creative. Verify persistence after restart.
+- [ ] Permissions: players without `asedit.basic` get vanilla flint behavior;
+      editor permissions do not bypass protected-region denial for either click
+      direction, including pre-attack on invulnerable stands and stored targets.
+      Test a protection plugin that denies through damage-only events separately
+      (early attack edits may not be vetoed by damage-only integrations).
+- [ ] Existing behavior: clicking blocks, attacking unrelated entities, hand
+      swapping, sneak-scrolling, name tags, `/ase gui`, GUI icons and language
+      English fallback still behave as established in Phase 2.
 - [ ] Lock Equipment: normal interaction cannot add/remove/swap any of six
       equipment slots, even for a builder; authorized GUI still can.
 - [ ] Lock Equipment: unlocked state restores normal vanilla manipulation;
@@ -186,6 +211,27 @@ assumed equivalent; recheck when relevant protection configuration changes.
       **plugin-owned** glow and does not clear an unrelated deliberate glow.
 - [ ] With Marker + no-tick + small/scale and Invulnerability in combination,
       editors can still select, edit and restore all toggles.
+
+## Phase 7 — Native Brigadier commands and tab completion (planned)
+
+- [ ] `/ase` is registered exactly once using Paper's lifecycle command API;
+      `plugin.yml` remains the plugin descriptor, without a duplicate legacy
+      `/ase` command declaration.
+- [ ] Verify suggestions and execution for `/ase gui`, `help`, `?`, `mode`,
+      `axis`, `adj` and `slot` with partial/mixed-case input where supported.
+- [ ] Tab completion suggests valid edit modes, `X/Y/Z` axes, `COARSE/FINE`
+      adjustments, and copy slots 1–9; all new modes are included.
+- [ ] Unimplemented modes are not suggested; missing `asedit.basic` hides
+      or denies editor commands, and restricted modes are omitted/denied in
+      accordance with their existing permission nodes.
+- [ ] Server-side authorization still rejects manually typed commands that
+      were hidden from suggestions; permission changes are reflected when
+      command trees are refreshed as appropriate.
+- [ ] Existing `/ase` behavior, help text, error feedback and `/ase gui`
+      access work for authorized players; non-player command behavior remains
+      appropriately denied. Verify no unintended aliases or name collisions.
+- [ ] Command registration works after restart and supported reload paths;
+      Gradle/CodeQL pass and full gameplay regression remains green.
 
 ## Build and release checks (Phases 1 and 7)
 
@@ -229,4 +275,6 @@ build was not independently recorded. Full regression remains a Phase 7 gate.
 | October 30, 2026 / Phase 1 | Gradle 9.8.2, Java 25; Paper API `26.3.build.231-stable` resolved | PASS (build and focused smoke test) | GitHub Actions Gradle build, JAR verifier and CodeQL passed; verified Wrapper JAR present. Operator confirmed plugin loads and basic editing works on a test server. Full gameplay suite deferred; test-server build not recorded. |
 | October 30, 2026 / Phase 2 preparation | Source and static review on `develop`; Gradle offline attempt failed (no distribution/network; Java 21 runtime) | BLOCKED (local build) | Permission/event fixes prepared for CI and in-game acceptance. |
 | October 31, 2026 / Phase 2 acceptance | GitHub Actions Gradle and CodeQL (operator confirmed), Paper 26.3 | PASS (targeted gameplay) | All eight targeted test groups passed, including region protection, permission groups and both hands. Offhand-only flint does nothing by design. CMI-specific non-interactable/invulnerable settings did not prevent ASE edits; not accepted as a protection boundary. |
-| October 31, 2026 / GUI command follow-up | Source-only change; CI/server not yet rerun | PENDING | New `/ase gui` access for confined spaces; existing flint click events unchanged. |
+| October 31, 2026 / GUI command follow-up | GitHub Actions/CodeQL green; live Paper test (operator confirmed) | PASS (command smoke test) | `/ase gui` opens the editor as intended. Granular denial/console/target-block cases are retained for the final regression pass. |
+
+| October 31, 2026 / Phase 3 prepared | Local source changes; Java 25/Paper server pending | PENDING (CI and gameplay) | Scale and Invulnerability modes, copy/paste, and invulnerable pre-attack path implemented. Run the Phase 3 checks above and confirm CI/CodeQL before accepting. |

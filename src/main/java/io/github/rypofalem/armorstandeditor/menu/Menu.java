@@ -55,7 +55,7 @@ public class Menu {
 
     ItemStack xAxis = null, yAxis = null, zAxis = null, coarseAdj = null, fineAdj = null, rotate = null, place = null, headPos = null,
       rightArmPos = null, bodyPos = null, leftArmPos = null, reset = null, showArms = null, visibility = null, size = null,
-      rightLegPos = null, equipment = null, leftLegPos = null, disableSlots = null, gravity = null, plate = null, copy = null, paste = null,
+      rightLegPos = null, equipment = null, leftLegPos = null, disableSlots = null, gravity = null, plate = null, scale = null, invulnerable = null, copy = null, paste = null,
       slot1 = null, slot2 = null, slot3 = null, slot4 = null, help = null;
 
     xAxis = createIcon(new ItemStack(Material.RED_WOOL, 1),
@@ -108,6 +108,12 @@ public class Menu {
 
     size = createIcon(new ItemStack(Material.PUFFERFISH, 1),
       "size", "mode size");
+
+    scale = createIcon(new ItemStack(Material.AMETHYST_SHARD),
+      "scale", "mode scale");
+
+    invulnerable = createIcon(new ItemStack(Material.TOTEM_OF_UNDYING),
+      "invulnerable", "mode invulnerable");
 
     if (pe.getPlayer().hasPermission("asedit.disableslots")) {
       disableSlots = createIcon(new ItemStack(Material.BARRIER), "disableslots", "mode disableslots");
@@ -170,7 +176,7 @@ public class Menu {
       bodyPos,
       leftArmPos,
       reset,
-      null,
+      scale,
       null,
       showArms,
       visibility,
@@ -181,7 +187,7 @@ public class Menu {
       null,
       null,
       null,
-      null,
+      invulnerable,
       gravity,
       plate,
       null,

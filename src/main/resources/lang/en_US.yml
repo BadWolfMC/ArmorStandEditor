@@ -24,6 +24,8 @@ setmode:
   showarms: Toggle Show Arms
   invisible: Toggle Visibility
   size: Toggle Size
+  scale: Adjust Scale
+  invulnerable: Toggle Invulnerability
   disableslots: Toggle Disable Slots
   gravity: Toggle Gravity
   baseplate: Toggle BasePlate
@@ -43,10 +45,18 @@ setadj:
   msg: Setting adjustment to <x>.
   coarse: Coarse
   fine: Fine
+setscale:
+  msg: Scale set to <x>x.
+setinvulnerable:
+  msg: Invulnerability turned <x>.
+  on: on
+  off: off
 setgravity: 
   msg: Gravity turned <x>.
   on: on
   off: off
+noscaleattribute:
+  msg: This armor stand does not have a scale attribute.
 nomode: 
   msg: Click with the edit tool away from an armorstand to select an editing mode first!
 copied: 
@@ -159,6 +169,14 @@ size:
   msg: Size
   description: 
     msg: Make it big or small
+scale:
+  msg: Scale
+  description:
+    msg: Left click to grow, right click to shrink (Fine 0.1, Coarse 0.5; 0.1-15.0)
+invulnerable:
+  msg: Invulnerability
+  description:
+    msg: Toggle protection from normal damage (creative players may still break stands)
 disableslots: 
   msg: Disable Slots
   description: 

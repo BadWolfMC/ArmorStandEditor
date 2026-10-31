@@ -26,6 +26,7 @@ import io.github.rypofalem.armorstandeditor.modes.ArmorStandData;
 import io.github.rypofalem.armorstandeditor.modes.Axis;
 import io.github.rypofalem.armorstandeditor.modes.CopySlots;
 import io.github.rypofalem.armorstandeditor.modes.EditMode;
+import io.github.rypofalem.armorstandeditor.modes.ScaleAdjustment;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -34,6 +35,8 @@ import net.md_5.bungee.api.ChatMessageType;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
@@ -128,6 +131,12 @@ public class PlayerEditor {
     case SIZE:
       toggleSize(armorStand);
       break;
+    case SCALE:
+      adjustScale(armorStand, 1);
+      break;
+    case INVULNERABLE:
+      toggleInvulnerable(armorStand);
+      break;
     case INVISIBLE:
       toggleVisible(armorStand);
       break;
@@ -199,6 +208,9 @@ public class PlayerEditor {
       break;
     case RIGHTLEG:
       armorStand.setRightLegPose(addEulerAngle(armorStand.getRightLegPose()));
+      break;
+    case SCALE:
+      adjustScale(armorStand, -1);
       break;
     case PLACEMENT:
       reverseMove(armorStand);
@@ -277,6 +289,10 @@ public class PlayerEditor {
     armorStand.setBasePlate(data.basePlate);
     armorStand.setArms(data.showArms);
     armorStand.setVisible(data.visible);
+    // Copy only the base scale; keep destination-specific attribute modifiers.
+    AttributeInstance scale = armorStand.getAttribute(Attribute.SCALE);
+    if (scale != null && data.scale != null) scale.setBaseValue(ScaleAdjustment.clamp(data.scale));
+    armorStand.setInvulnerable(data.invulnerable);
     if (this.getPlayer().getGameMode() == GameMode.CREATIVE) {
       armorStand.getEquipment().setHelmet(data.head);
       armorStand.getEquipment().setChestplate(data.body);
@@ -290,6 +306,22 @@ public class PlayerEditor {
 
   private void toggleDisableSlots(ArmorStand armorStand) {
     //TODO
+  }
+
+  private void adjustScale(ArmorStand armorStand, int direction) {
+    AttributeInstance scale = armorStand.getAttribute(Attribute.SCALE);
+    if (scale == null) {
+      sendMessage("noscaleattribute", "warn", null);
+      return;
+    }
+    double next = ScaleAdjustment.adjust(scale.getBaseValue(), direction, adjMode);
+    scale.setBaseValue(next);
+    sendMessage("setscale", String.format(java.util.Locale.ROOT, "%.1f", next));
+  }
+
+  private void toggleInvulnerable(ArmorStand armorStand) {
+    armorStand.setInvulnerable(!armorStand.isMarkedInvulnerable());
+    sendMessage("setinvulnerable", armorStand.isMarkedInvulnerable() ? "on" : "off");
   }
 
   private void toggleGravity(ArmorStand armorStand) {

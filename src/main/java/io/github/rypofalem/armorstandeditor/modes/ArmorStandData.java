@@ -19,6 +19,8 @@
 
 package io.github.rypofalem.armorstandeditor.modes;
 
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.EulerAngle;
@@ -32,6 +34,8 @@ public final class ArmorStandData {
   public final EulerAngle rightLegPos;
   public final boolean visible;
   public final boolean size;
+  public final Double scale;
+  public final boolean invulnerable;
   public final boolean basePlate;
   public final boolean gravity;
   public final boolean showArms;
@@ -50,6 +54,9 @@ public final class ArmorStandData {
     this.leftLegPos = as.getLeftLegPose();
     this.rightLegPos = as.getRightLegPose();
     this.size = as.isSmall();
+    AttributeInstance scaleAttribute = as.getAttribute(Attribute.SCALE);
+    this.scale = scaleAttribute == null ? null : scaleAttribute.getBaseValue();
+    this.invulnerable = as.isMarkedInvulnerable();
     this.basePlate = as.hasBasePlate();
     this.gravity = as.hasGravity();
     this.showArms = as.hasArms();
