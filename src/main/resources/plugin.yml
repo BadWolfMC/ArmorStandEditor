@@ -5,11 +5,6 @@ api-version: "26.3"
 website: rypofalem.github.io
 author: "RypoFalem, mercurialmusic"
 description: Allows players to edit data of armorstands without any commands.
-commands:
-  ase:
-    description: Changes the function of the armorstand edit tool.
-    usage: /<command> ? - list subcommands
-    permission: asedit.basic
 permissions:
     asedit.basic:
       description: Allow use armorstand edit functions. If set to false it will override all other functions.

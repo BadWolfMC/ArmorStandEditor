@@ -35,5 +35,5 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: package
-          path: build/libs/armorstandeditor-26.3.jar
+          path: build/libs/armorstandeditor-*.jar
           if-no-files-found: error

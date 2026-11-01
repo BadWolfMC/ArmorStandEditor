@@ -5,7 +5,47 @@ Keep entries concise and limited to work that has actually been completed.
 
 ## Unreleased
 
-### Phase 6 — No Ticking and Phase 5 refinements (prepared; awaiting live acceptance)
+### Release preparation (1.0.0 candidate, not published)
+- Separate the plugin release version (`1.0.0` in `gradle.properties`) from
+  Paper API compatibility (`api-version: 26.3` and dynamic `26.3.build.+`).
+- Keep Gradle CI artifact verification and upload independent of future version
+  changes; document release/tag procedure in `docs/releasing.md`.
+- Dependabot version-update PRs are configured for `develop`; config must be
+  present on GitHub's default branch to take effect. Security updates still
+  target the default branch.
+- Retain all previous historic version numbers in the changelog. This version
+  marks BadWolfMC fork's modernized stable release after final acceptance.
+
+### Phase 7 hardening follow-up (release candidate; verification pending)
+- Defer main-GUI Help and Apply/Reverse target actions that can change
+  inventories to the next tick; check the player, permission and originating
+  inventory again before executing. Leave normal selection commands immediate.
+- Deduplicate/cancel pending flint air-menu tasks on subsequent edits, logout
+  and plugin disable; guard delayed openings against offline players.
+- Validate the configured tool Material and rotation divisors at startup;
+  warn and fall back to existing FLINT/12/120 defaults only for invalid values.
+- Check stand validity before applying delayed name-tag updates. Interpret
+  existing legacy section-color codes in Adventure GUI text/action messages
+  without editing translation files or changing config format.
+- Add focused unit tests for invalid rotation divisors and scale bounds/steps.
+  Build, CI/CodeQL and live Paper acceptance remain pending for this patch.
+
+
+### Phase 7 — Native Brigadier commands (release candidate, not yet accepted)
+- Replaced the legacy `/ase` executor/YAML command declaration with one native
+  Paper `LifecycleEvents.COMMANDS` registration. Lowercase Brigadier literals
+  provide built-in subcommand completion, and word-argument suggestions offer
+  permitted editing modes, axes, adjustment names and copy slots.
+- Standardized on lowercase-only command input and suggestions; the existing
+  GUI commands are already lowercase. Permission checks still apply during
+  execution as well as suggestions; non-player commands are denied.
+- Made missing configured locales fall back to English, removed unused Spigot
+  detection/list code, and expanded Java unit tests and JAR verification.
+- **Pending:** GitHub Actions/CodeQL, Java 25 build, Paper command registration
+  and full gameplay regression before acceptance. No `main` merge or deployment.
+
+
+### Phase 6 — No Ticking and Phase 5 refinements (accepted 2026-10-31)
 - Added opt-in per-stand `NOTICK` mode (`/ase mode notick`), with a Clock icon
   and native `canTick`/`setCanTick` state included in copy/paste. Neither
   world configuration nor untouched stands are modified.
@@ -27,9 +67,12 @@ Keep entries concise and limited to work that has actually been completed.
   stand cycling. Explicit GUI target actions remain unchanged. This resolves
   a misleading alternating No Ticking status caused by repeated edits to the
   same selected stand; no world-level tick configuration is accessed.
-- **Pending:** live confirmation of the targeting follow-up, persistence/client
-  synchronization, permissions, glow and performance regressions on Paper 26.3.
-  Operator reports GitHub CI green before this follow-up patch.
+- **Accepted:** BadWolfMC administration confirmed green CI/CodeQL and
+  completed Phase 6 live regression testing on Paper 26.3, including the
+  independent-target fix, permissions, persistence, paste and glow behavior;
+  no new regressions detected. An optional 50-stand spark comparison found
+  slightly lower process CPU but no meaningful MSPT difference; the result is
+  observational, not a proven causal speedup. No Phase 7 changes included.
 
 ### Phase 5 — Targeting, Marker and No Movement (accepted 2026-10-31)
 - Added independent Marker and No Movement controls to the grouped GUI and

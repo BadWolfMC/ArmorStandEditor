@@ -19,6 +19,7 @@
 
 package io.github.rypofalem.armorstandeditor;
 
+import io.github.rypofalem.armorstandeditor.language.Language;
 import io.github.rypofalem.armorstandeditor.menu.Menu;
 import io.github.rypofalem.armorstandeditor.modes.AdjustmentMode;
 import io.github.rypofalem.armorstandeditor.modes.ArmorStandData;
@@ -41,8 +42,8 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
-import static net.kyori.adventure.text.Component.text;
 
 public class PlayerEditor {
   public ArmorStandEditorPlugin plugin;
@@ -59,6 +60,7 @@ public class PlayerEditor {
   ArrayList < ArmorStand > targetList = null;
   int targetIndex = 0;
   long lastCancelled = 0;
+  private BukkitTask pendingMenuTask;
 
   public PlayerEditor(UUID uuid, ArmorStandEditorPlugin plugin) {
     this.uuid = uuid;
@@ -510,7 +512,7 @@ public class PlayerEditor {
   }
 
   void sendMessage(String path, String format, String option) {
-    Component message = text(plugin.getLang().getMessage(path, format, option));
+    Component message = Language.component(plugin.getLang().getMessage(path, format, option));
     if (plugin.sendToActionBar) {
       plugin.getServer().getPlayer(getUUID()).sendActionBar(message);
     } else {
@@ -539,13 +541,18 @@ public class PlayerEditor {
   }
 
   public void openMenu() {
-    if (!isMenuCancelled()) {
-      plugin.getServer().getScheduler().runTaskLater(plugin, new OpenMenuTask(), 1).getTaskId();
+    // Only one next-tick open may be pending for a player at a time.
+    if (!isMenuCancelled() && pendingMenuTask == null) {
+      pendingMenuTask = plugin.getServer().getScheduler().runTaskLater(plugin, new OpenMenuTask(), 1);
     }
   }
 
   public void cancelOpenMenu() {
     lastCancelled = getManager().getTime();
+    if (pendingMenuTask != null) {
+      pendingMenuTask.cancel();
+      pendingMenuTask = null;
+    }
   }
 
   boolean isMenuCancelled() {
@@ -553,10 +560,12 @@ public class PlayerEditor {
   }
 
   private class OpenMenuTask implements Runnable {
-
     @Override
     public void run() {
-      if (isMenuCancelled()) return;
+      pendingMenuTask = null;
+      Player player = getPlayer();
+      if (player == null || !player.isOnline() ||
+          !player.hasPermission("asedit.basic") || isMenuCancelled()) return;
       chestMenu.openMenu();
     }
   }

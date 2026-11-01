@@ -4,6 +4,24 @@ Bukkit/Paper plugin to allow players to edit armor stands without commands.
 
 Read the [wiki](https://github.com/RypoFalem/ArmorStandEditor/wiki) for more info.
 
+## Native `/ase` commands (Phase 7 release candidate)
+
+Paper 26.3 registers `/ase` once through `LifecycleEvents.COMMANDS` with
+`plugin.yml` retained as the plugin descriptor (without a legacy `commands:`
+registration). Commands are **lowercase only**; use `/ase`, `/ase help`,
+`/ase ?`, `/ase gui`, `/ase mode <mode>`, `/ase axis <x|y|z>`,
+`/ase adj <coarse|fine>` or `/ase slot <1-9>`. Tab completion suggests
+permitted values, including new Scale, Invulnerability, Lock Equipment,
+Marker, No Movement and No Ticking modes. Restricted modes are also checked
+at execution (`asedit.invisible`, `asedit.lockequipment`, `asedit.marker`,
+`asedit.notick`), on top of `asedit.basic`.
+
+Uppercase inputs such as `/ASE` and `/ase mode Scale` are intentionally
+unsupported in Phase 7. GUI icons already issue lowercase commands and
+continue to work without changes. Console and non-player senders cannot use
+editor commands. This release candidate needs GitHub CI/CodeQL and the full
+Paper regression checklist before acceptance or promotion to `main`.
+
 ## Opening the editor in confined spaces
 
 Players with `asedit.basic` can run `/ase gui` to open the normal editor menu
@@ -11,10 +29,10 @@ without having to find a clear line of sight or hold the flint tool. Clicking
 air with flint still opens the same menu; block clicks remain vanilla. This
 command is an accepted Phase 2 follow-up: GitHub CI and CodeQL remained
 green, and BadWolfMC administration confirmed it works in game (2026-10-31).
-The remaining command tree will be moved to native Paper Brigadier with tab
-completion in Phase 7; see `docs/modernization-plan.md`.
+The command tree is now implemented using native Paper Brigadier on the Phase 7
+release-candidate branch; see `docs/modernization-plan.md`.
 
-## Equipment locking (Phase 4 candidate)
+## Equipment locking (Phase 4 accepted)
 
 The **Lock Equipment** editor mode uses `asedit.lockequipment` (default `op`)
 in addition to `asedit.basic`. It blocks normal armor stand equipment changes
@@ -26,11 +44,28 @@ helmet/chest/legs/boots/hand slot to **swap its full stack with the cursor**.
 Pick up equipment or put items on your cursor in your own inventory first.
 No items are unequipped merely by opening the GUI. Shift-click transfers and
 drags into preview slots are intentionally disabled to avoid duplicate gear.
-The Phase 4 implementation still requires CI and live regression testing.
+Phase 4 passed CI and targeted in-game regression testing on BadWolfMC.
+
+## Marker and No Ticking (Phases 5–6 accepted)
+
+Marker stands can be recovered using the editor's **Select Target**, **Apply
+to Target** and **Reverse on Target** actions even without a vanilla hitbox.
+No Movement is independent of Gravity and Ticking. No Ticking controls each
+armor stand's native Paper ticking state and is **opt-in**; it does not change
+world configuration or alter untouched stands. Non-ticking stands skip the
+editor's temporary selection glow, while remaining editable.
+
+Marker requires `asedit.marker`; No Ticking requires `asedit.notick`. Both
+permissions default to `op` and are required when changing these properties
+through modes, target actions, or paste. No Movement remains governed by
+`asedit.basic`. Following successful live tests and green CI, Phase 6 is
+accepted on `develop`. Native Brigadier command modernization remains Phase 7.
 
 ## Building this BadWolfMC fork
 
-The plugin targets Paper 26.3 and Java 25. Build with the Gradle Wrapper;
+The plugin release version is **1.0.0** (defined in `gradle.properties`),
+independent of the target **Paper 26.3** API (`plugin.yml`) and Java 25.
+Build with the Gradle Wrapper;
 no separate Maven or Gradle installation is needed. The build uses Paper's
 `26.3.build.+` API dependency (the newest matching build at resolution time).
 
@@ -48,7 +83,7 @@ On Linux/macOS:
 python3 scripts/verify-jar.py
 ```
 
-The resulting server plugin is `build/libs/armorstandeditor-26.3.jar`.
+The resulting server plugin is `build/libs/armorstandeditor-1.0.0.jar`.
 GitHub Actions uploads this as the `package` artifact (downloaded as
 `package.zip`). The ZIP contains the plugin JAR, not a second nested ZIP.
 
@@ -61,6 +96,10 @@ it and include a download fallback if the JAR is missing. The Gradle
 `gradle/wrapper/gradle-wrapper.properties`. No global Gradle or Maven install
 is required. Java 25 is required to perform the build; GitHub Actions supplies
 that JDK.
+
+See [`docs/releasing.md`](docs/releasing.md) for the release-version policy,
+GitHub/Dependabot branch behavior, and release acceptance steps. The version
+1.0.0 is a **proposed release candidate**, not a tag or published release.
 
 ## Phase 1 closeout (verified on `develop`, 2026-10-30)
 

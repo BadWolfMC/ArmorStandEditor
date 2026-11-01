@@ -93,7 +93,7 @@ notarget:
 help:
   msg: "1. Hold the editing tool(<x>) in your main hand
 
-      2. Left or right click away from an armor stand to open menu.
+      2. Left or right click away from an armor stand to open menu, or use /ase gui.
 
       3. Select the labeled menu options.
 

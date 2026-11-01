@@ -6,7 +6,17 @@ import sys
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "26.3"
+def project_version() -> str:
+    """Read the same Gradle project version used for the packaged plugin descriptor."""
+    props = (ROOT / "gradle.properties").read_text(encoding="utf-8")
+    versions = [line.split("=", 1)[1].strip() for line in props.splitlines()
+                if line.strip().startswith("version=")]
+    if len(versions) != 1 or not versions[0]:
+        raise SystemExit("Expected exactly one non-empty version= in gradle.properties")
+    return versions[0]
+
+
+VERSION = project_version()
 MAIN = "io/github/rypofalem/armorstandeditor/ArmorStandEditorPlugin.class"
 
 
@@ -35,7 +45,9 @@ def main() -> None:
                 assert bytecode[:4] == b'\xca\xfe\xba\xbe', f"Invalid class file: {path}"
                 assert int.from_bytes(bytecode[6:8], 'big') == 69, f"Not Java 25 bytecode: {path}"
         assert MAIN in names, 'Main class missing'
-        assert 'version: 26.3' in archive.read('plugin.yml').decode('utf-8')
+        assert f'version: {VERSION}' in archive.read('plugin.yml').decode('utf-8')
+        assert 'commands:' not in archive.read('plugin.yml').decode('utf-8'), 'Legacy /ase command declaration remains'
+        assert 'io/github/rypofalem/armorstandeditor/CommandEx.class' in names, 'Native command class missing'
         assert '${project.version}' not in archive.read('plugin.yml').decode('utf-8')
 
     print(f"PASS: {jar.name}; descriptor matches source with version resolved; all resources unchanged; Java 25 bytecode")

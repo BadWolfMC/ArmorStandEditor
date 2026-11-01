@@ -23,7 +23,7 @@ import io.github.rypofalem.armorstandeditor.language.Language;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -33,9 +33,7 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
   private NamespacedKey movementKey;
   private final HighlightControl highlightControl = new HighlightControl();
   private static ArmorStandEditorPlugin instance;
-  private CommandEx execute;
   private Language lang;
-  public boolean hasSpigot;
   public PlayerEditorManager editorManager;
   public Material editTool = Material.FLINT;
   boolean requireToolData = false;
@@ -68,9 +66,22 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
     lang = new Language(getConfig().getString("lang"), this);
 
     coarseRot = getConfig().getDouble("coarse");
+    if (!ConfigValidation.isUsableRotationDivisor(coarseRot)) {
+      getLogger().warning("Invalid 'coarse' rotation divisor; using default 12.");
+      coarseRot = 12;
+    }
     fineRot = getConfig().getDouble("fine");
+    if (!ConfigValidation.isUsableRotationDivisor(fineRot)) {
+      getLogger().warning("Invalid 'fine' rotation divisor; using default 120.");
+      fineRot = 120;
+    }
     String toolType = getConfig().getString("tool", "FLINT");
-    editTool = Material.getMaterial(toolType);
+    Material configuredTool = toolType == null ? null : Material.getMaterial(toolType);
+    if (configuredTool == null) {
+      getLogger().warning("Invalid 'tool' material '" + toolType + "'; using default FLINT.");
+      configuredTool = Material.FLINT;
+    }
+    editTool = configuredTool;
     requireToolData = getConfig().getBoolean("requireToolData", false);
     if (requireToolData) editToolData = getConfig().getInt("toolData", Integer.MIN_VALUE);
     requireToolLore = getConfig().getBoolean("requireToolLore", false);
@@ -79,17 +90,12 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
     sendToActionBar = getConfig().getBoolean("sendMessagesToActionBar", true);
 
     editorManager = new PlayerEditorManager(this);
-    execute = new CommandEx(this);
-    getCommand("ase").setExecutor(execute);
+    CommandEx commands = new CommandEx(this);
+    // A single lifecycle callback also handles Paper command-tree rebuilds.
+    getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
+        commands.register(event.registrar()));
     getServer().getPluginManager().registerEvents(editorManager, this);
     editorManager.restoreLoadedMovement();
-
-    hasSpigot = true;
-    try {
-      Class.forName("org.spigotmc.package-info", false, this.getClassLoader());
-    } catch (ClassNotFoundException e) {
-      hasSpigot = false;
-    }
   }
 
   @Override
@@ -102,17 +108,6 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
     if (!new File(getDataFolder() + File.separator + folder + config).exists()) {
       saveResource(folder + config, false);
     }
-  }
-
-  public String listPlugins() {
-    Plugin[] plugins = getServer().getPluginManager().getPlugins();
-    StringBuilder list = new StringBuilder();
-    for (Plugin p: plugins) {
-      if (p != null) {
-        list.append(" :").append(p.getName()).append(" ").append(p.getDescription().getVersion()).append(": ");
-      }
-    }
-    return list.toString();
   }
 
   public static ArmorStandEditorPlugin instance() {

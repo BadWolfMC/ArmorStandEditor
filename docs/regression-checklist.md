@@ -305,73 +305,79 @@ separately claimed as witnessed.
 - [x] Operator confirmed Phase 5 tests passed with no regressions; Material.CHAIN
       was corrected to EXPOSED_COPPER_CHAIN in the uploaded baseline.
 
-## Phase 6 — No Ticking and restricted Marker (pending CI/live validation)
+## Phase 6 — No Ticking and restricted Marker (accepted 2026-10-31)
 
-- [ ] `asedit.marker` and `asedit.notick` default to `op`. An editor with only
+BadWolfMC administration reports that the full requested live Phase 6 tests
+passed following the shared-target isolation correction and CI remained green.
+The checks below are marked **operator-reported**, not independently rerun
+against Paper by this documentation update. The optional spark comparison
+is summarized separately and is not considered a performance guarantee.
+
+- [x] `asedit.marker` and `asedit.notick` default to `op`. An editor with only
       `asedit.basic` sees both icons but cannot select either mode, including
       `/ase mode marker` and `/ase mode notick`; the permission denial is clear.
-- [ ] Grant/revoke each permission at runtime: direct left/right clicks,
+- [x] Grant/revoke each permission at runtime: direct left/right clicks,
       selected-target Apply/Reverse and typed commands cannot bypass either
       gate after revocation. No Movement still works under `asedit.basic`.
-- [ ] Paste snapshots containing Marker ON/OFF and No Ticking ON/OFF into
+- [x] Paste snapshots containing Marker ON/OFF and No Ticking ON/OFF into
       destination stands in all four source/destination combinations, first
       with then without each permission. Unauthorized Paste must not change
       the protected property, while ordinary properties still paste normally.
       Verify the two permissions independently, including after revoke.
-- [ ] Confirm GUI slots: Show Arms 14, Visibility 15, Size 16, Scale 17;
+- [x] Confirm GUI slots: Show Arms 14, Visibility 15, Size 16, Scale 17;
       Invulnerability 23, Lock Equipment 24, Gravity 25, Baseplate 26;
       Marker 32, No Movement 33, No Ticking 34; Select Target 41, Apply 42,
       Reverse 43. No missing/overlapping icons; `EXPOSED_COPPER_CHAIN` works.
-- [ ] No Ticking toggles `canTick()` per stand in Creative and Survival,
+- [x] No Ticking toggles `canTick()` per stand in Creative and Survival,
       independent of Gravity, No Movement, Marker, Scale and Invulnerability.
       Untouched stands retain their existing ticking state when plugin enables.
-- [ ] **Target isolation / Phase 6 follow-up:** select AS1 with F or the
+- [x] **Target isolation / Phase 6 follow-up:** select AS1 with F or the
       Select Target GUI, then physically click different, separately placed
       AS2 and AS3 using No Ticking. Each click changes **only the stand hit**,
       not the previously selected AS1. Alternate AS1/AS2/AS3 and verify the
       feedback matches each stand's state; repeat in both game modes. Use the
       GUI's Apply/Reverse controls to deliberately edit the selected stand.
-- [ ] Place two precisely co-located/stacked stands; verify hand-swap cycling
+- [x] Place two precisely co-located/stacked stands; verify hand-swap cycling
       can still direct a physical tool click to the selected stand, including
       toggles and region-protection checks. Click an unrelated stand farther
       than 0.25 blocks from that stack: only the clicked stand changes.
-- [ ] Check each stand's ticking independently via the native Paper API or
+- [x] Check each stand's ticking independently via the native Paper API or
       `data get entity` with a nearest-entity selector after deliberately
       isolating the stand (Paper writes `Paper.CanTickOverride` for an explicit
       setter call). Compare before/after chunk reload and restart. Do not
       interpret an alternating status message alone as evidence of a global
       or world-level setting change.
-- [ ] Explicit Ticking ON/OFF survives chunk unload/load and server restart;
+- [x] Explicit Ticking ON/OFF survives chunk unload/load and server restart;
       updating No Movement PDC does not overwrite the Paper ticking override.
-- [ ] Pose/placement/rotation, all six equipment slots in the authorized GUI,
+- [x] Pose/placement/rotation, all six equipment slots in the authorized GUI,
       copy/paste, targeting and invulnerable-stand left clicks work when no-tick.
       Confirm client display sync and persistence after a save/restart.
-- [ ] Ordinary ticking stands show the normal brief (~15 tick) selection glow.
+- [x] Ordinary ticking stands show the normal brief (~15 tick) selection glow.
       A stand marked no-tick receives no new editor-applied glow, but can still
       be selected and edited with the marker-recovery target controls.
-- [ ] Switch ticking OFF while ASE's short glow is active: glow clears rather
+- [x] Switch ticking OFF while ASE's short glow is active: glow clears rather
       than becoming stuck. Test a deliberate pre-existing or separately applied
       Glowing effect: selecting a stand must not overwrite it, and No Ticking
       must not strip it. Check distinct amplifiers/durations and effect refresh.
-- [ ] Compare burning, status-effect expiry, physics/gravity, collisions,
+- [x] Compare burning, status-effect expiry, physics/gravity, collisions,
       normal/creative damage and interaction on ticking vs non-ticking stands;
       record behavior differences without assuming optimization is universal.
-- [ ] Test combined Marker + No Ticking + small/0.1-scale, invisible,
+- [x] Test combined Marker + No Ticking + small/0.1-scale, invisible,
       Invulnerability and Lock Equipment; recover each toggle using Select
       Target + Apply/Reverse without bypassing protection plugins.
-- [ ] Recheck standard flint permissions, chest/door/button interactions,
+- [x] Recheck standard flint permissions, chest/door/button interactions,
       sneak-scroll/swap, `/ase gui`, Equipment GUI, copy/paste Creative-only
       equipment guard and Phase 2–5 editing modes.
-- [ ] GitHub Actions Gradle Java 25 build and CodeQL remain green; record Paper
+- [x] GitHub Actions Gradle Java 25 build and CodeQL remain green; record Paper
       build and in-game test results before Phase 6 acceptance.
 
-## Phase 7 — Native Brigadier commands and tab completion (planned)
+## Phase 7 — Native Brigadier commands and tab completion (release candidate; pending acceptance)
 
 - [ ] `/ase` is registered exactly once using Paper's lifecycle command API;
       `plugin.yml` remains the plugin descriptor, without a duplicate legacy
       `/ase` command declaration.
 - [ ] Verify suggestions and execution for `/ase gui`, `help`, `?`, `mode`,
-      `axis`, `adj` and `slot` with partial/mixed-case input where supported.
+      `axis`, `adj` and `slot` with lowercase input and partial completion.
 - [ ] Tab completion suggests valid edit modes, `X/Y/Z` axes, `COARSE/FINE`
       adjustments, and copy slots 1–9; all new modes are included.
 - [ ] Unimplemented modes are not suggested; missing `asedit.basic` hides
@@ -385,6 +391,162 @@ separately claimed as witnessed.
       appropriately denied. Verify no unintended aliases or name collisions.
 - [ ] Command registration works after restart and supported reload paths;
       Gradle/CodeQL pass and full gameplay regression remains green.
+
+## Phase 7 hardening follow-up (pending live acceptance)
+
+These checks cover fixes identified in the source-level deep review. No live
+results are claimed here; keep the Phase 7 sign-off unchecked until retested.
+
+- [ ] **Click-handler inventory transitions:** from main GUI with Equipment mode
+      selected, use **Apply to Target** and **Reverse on Target**. Equipment GUI
+      should open on the next tick without errors, cursor loss or duplication.
+      Use Help icon and check menu closes with help displayed. Independently
+      confirm `/ase help` and `/ase gui` still work when typed directly.
+- [ ] **Deferred permission and UI checks:** revoke `asedit.basic` after opening
+      the GUI, and close/switch inventory immediately after clicking Apply or
+      Help. Neither stale deferred action nor permission revocation may open
+      another inventory or edit a stand. Stand targeting and protection should
+      still be rechecked when Apply/Reverse executes.
+- [ ] **Pending flint air-menu:** rapid-click air repeatedly; only one menu
+      should open. Click air and immediately attack/edit a stand; the pending
+      menu must not override the interaction. Quit immediately after a click,
+      then reconnect; no stale menu/task or exception should occur. Repeat
+      around plugin disable/restart.
+- [ ] **Invalid config test on disposable server:** try `tool: NOT_A_MATERIAL`,
+      `coarse: 0`, `fine: 0`, negative values and extremely small divisors.
+      Startup logs should warn and use FLINT/12/120. Help must not throw,
+      poses must remain finite, and restoring valid custom values should
+      retain their original behavior.
+- [ ] **Language rendering:** verify translated colors on GUI item display
+      names, lore, Equipment GUI title/icon labels, and player action-bar/chat
+      messages; preserve actual language strings/fallbacks. Test help text
+      and switching between shipped locales as before.
+- [ ] **Name-tag race:** rename a valid stand as before; if a stand is removed
+      immediately afterward, the delayed task must not throw. A consumed
+      name tag is not refunded when the target becomes invalid (unchanged).
+- [ ] **Existing sensitive cases:** two editors with the same Equipment GUI,
+      full inventory and alternate hotbar/cursor interactions, locked gear,
+      15× stand upper-body equipment reach, region protections, Marker recovery,
+      per-stand No Ticking and legacy unprivileged flint interactions.
+
+## Final Phase 7 in-game release-candidate regression (ALL UNCHECKED)
+
+Run on a disposable Paper **26.3 / Java 25** test server with the candidate
+built from `develop`, using actual BadWolfMC permission groups and protection
+plugins. Record full Paper build, candidate JAR SHA-256 and source commit in
+**Test notes**. Test permissions using a non-op account, plus a second editor
+and an unprivileged player. Preserve the production JAR as rollback.
+
+### A. Command tree, completion and authorization
+
+- [ ] Start with the old production JAR absent, load the new candidate, and
+      inspect `minecraft:help`, `/help ase`, console command output and server
+      logs: exactly one `/ase` from ArmorStandEditor, no command-map collisions,
+      duplicate labels or legacy registration warnings; `/ase:...` naming works
+      as Paper defines it. Test command refresh via Paper's supported reload
+      path; avoid legacy `/reload` on production.
+- [ ] As an editor, run `/ase`, `/ase help`, `/ase ?`, `/ase gui` using lowercase-only
+      syntax. Confirm uppercase inputs (`/ASE`, `/ase GUI`,
+      `/ase mode Scale`) are rejected cleanly. Match help, sounds and menu behavior. Check `/ase gui` without flint while looking at
+      a chest/door and while another inventory is open.
+- [ ] Complete `/ase <TAB>`, `/ase mo<TAB>`, `/ase mode <TAB>`,
+      `/ase mode lo<TAB>`, `/ase axis <TAB>`, `/ase adj <TAB>` and
+      `/ase slot <TAB>`; assert suggestions use lowercase and offer
+      all implemented modes (including `size`, `scale`, `invulnerable`,
+      `marker`, `nomovement`, `notick` and `lockequipment`),
+      `x/y/z`, `coarse/fine`, slots 1–9.
+      No `disableslots` or unrelated modes may appear.
+- [ ] Check `/ase mode`/`axis`/`adj`/`slot` missing value warnings, bad values,
+      out-of-range slots (`0`, `10`, `257`, `-1`, nonnumbers), unknown first
+      subcommands and additional unexpected arguments. Confirm no player
+      state changes or stack traces for invalid input.
+- [ ] Run each valid command as non-op `asedit.basic` holder; confirm commands
+      take effect and GUI icons continue to dispatch modes and copy slots.
+      Verify help and completion reflect the same current mode options.
+- [ ] With `asedit.basic` missing (including an account with only `asedit.use`),
+      check `/ase`, `/ase gui`, typed `/ase mode scale`, and tab suggestions.
+      All attempts must fail safely with no GUI, state changes or permissions
+      leaked through suggestions. Console/RCON and command blocks must not
+      open menus or edit armor stands; check denial/unknown-syntax responses.
+- [ ] Grant `asedit.basic` but deny each of `asedit.invisible`,
+      `asedit.lockequipment`, `asedit.marker`, `asedit.notick` independently;
+      check suggestion omission, direct lowercase command denial, GUI
+      icon denial (where displayed), and paste permission isolation. Regrant
+      in session, refresh the command tree as needed, and check changes take
+      effect without logging out. Test revoked `asedit.basic` after GUI opened.
+- [ ] Restart and perform a supported command-tree refresh to confirm `/ase`
+      remains single and suggestions still function; check any command aliases
+      or name collisions with other plugins installed on BadWolfMC.
+
+### B. Unchanged flint and GUI behavior
+
+- [ ] Without editor rights, repeat flint chest/barrel/door/button/lever,
+      unrelated mobs/players and armor-stand interaction in both game modes;
+      hand swap, sneak-scroll and offhand-only flint remain vanilla.
+- [ ] With rights, ensure normal block/entity interactions are untouched;
+      flint air-click opens exactly one menu, and targeting hand-swap, axes,
+      physical click selection and intentional stacked cycling work normally.
+      Physical hits on stands more than 0.25 blocks apart must not be stolen
+      by a previously selected target.
+- [ ] Select each pose, placement/rotate, body part, axis and adjustment mode
+      via both GUI and commands. Verify left vs right edit directions, reset,
+      arms, visibility, gravity, baseplate and normal/small Size. Verify
+      name-tag formatting and `asedit.rename` permissions.
+- [ ] Select and recover very small, very large, invisible, hitbox-less Marker
+      and overlapping stands using Select/Apply/Reverse Target GUI controls;
+      test walls and region boundaries (no target-through-block bypass).
+- [ ] Change region protection permissions after selecting a target; edit,
+      target actions, invulnerable pre-attack and Equipment GUI swaps must
+      recheck permissions. Two players' targets and synthetic events must
+      remain isolated; verify CMI-specific limitations documented above.
+
+### C. Phase 3–6 features and persisted stand data
+
+- [ ] Scale 0.1–15.0 bounds, Fine 0.1/Coarse 0.5 increments, 1.0 base and
+      preserved attribute modifiers; Size independent; test direct edits,
+      command/GUI selection and copy/paste between stands.
+- [ ] Invulnerability ON/OFF including survival damage vs creative behavior,
+      creative flint left click and no duplicate changes; other modes still
+      operate on invulnerable stands.
+- [ ] Lock Equipment blocks vanilla changes in all six slots, including for
+      editors, but authorized Equipment GUI swaps still work. Test mixed
+      creative/survival lock/equipment paste combinations, partial lock states,
+      default `ADDING` locks and unauthorized lock-state paste.
+- [ ] Equipment GUI: preview remains live without removing gear; deny shift,
+      drag, number/offhand swap, clone, double-click and ghost-item extraction.
+      Check disconnect/reconnect, full inventory, stand deletion, GUI close,
+      permission revocation and two concurrent viewers for item integrity.
+- [ ] Marker can be enabled/disabled by explicit targeting after its hitbox
+      disappears; No Movement remains independent of gravity and persists via
+      PDC after chunk unload/reload and restart.
+- [ ] No Ticking applies to a **single** stand, persists through world save,
+      chunk reload and server restart, and does not affect neighboring stands.
+      Perform poses, equipment sync and copy/paste while ticking is disabled;
+      no editor glow applied to no-tick stands, normal brief glow retained on
+      ticking stands, and deliberate external glow preserved as far as can be
+      distinguished by Bukkit's API.
+- [ ] Copy multiple independent slots, pasting all recorded properties and
+      equipment (Creative only) including Scale, Invulnerability, locks,
+      Marker, No Movement and No Ticking. Repeat with basic-only permissions
+      to ensure restricted state is neither copied into the destination nor
+      accidentally cleared. Retest restart persistence.
+- [ ] Change language from English to another shipped locale and confirm
+      English fallback for new strings and icons; no null/missing text.
+
+### D. Release sign-off
+
+- [ ] `./gradlew clean build` and `python3 scripts/verify-jar.py` green
+      with JDK 25, including focused unit tests and plugin descriptor checks.
+- [ ] GitHub Gradle and CodeQL workflows green on `develop`; download
+      `package.zip`, confirm exactly one `armorstandeditor-1.0.0.jar`, inspect
+      metadata/resources, Java 25 bytecode and SHA-256 before deployment.
+- [ ] Test real Paper restart with the candidate JAR; plugin enable logs clean,
+      `/ase` commands and GUI work, and armor stands are unchanged unless
+      deliberately edited. Complete all outstanding exceptional cases in the
+      earlier Phase 2–6 sections or document explicit release exceptions.
+- [ ] Record tester/date/server build/source commit/artifact checksum, roll
+      back once using the preserved production JAR, and obtain explicit
+      operator acceptance before separately merging or deploying `main`.
 
 ## Build and release checks (Phases 1 and 7)
 
@@ -414,11 +576,19 @@ build was not independently recorded. Full regression remains a Phase 7 gate.
 
 ## Performance comparison (Phase 6)
 
-- [ ] Capture similar server load and positions for ticking/on-off tests.
-- [ ] Measure MSPT and spark traces for comparable loaded armor stand counts;
-      record sample time, server build, configuration and test conditions.
-- [ ] Report measured differences rather than claiming generic performance
-      improvement; compare rendering/tracking cost where possible.
+- [x] Captured an optional single-server, 50-stand spark profile with
+      ticking enabled, a changeover period, then all stands set to No Ticking.
+      Same loaded area and stable ~210–212 total entities; the changeover was
+      not separately timestamped, so this is exploratory rather than A/B/A.
+- [x] Recorded `OJ1fIRAFxh.sparkprofile` (Paper 26.3; UTC start 2026-11-01
+      02:26:14, end 02:33:42; duration ~7m28s). Comparing the three complete
+      pre-transition and four post-transition one-minute windows:
+      system CPU mean 33.1% → 10.6%, process CPU mean 1.79% → 1.54%,
+      averaged per-window median MSPT 2.23 ms → 2.22 ms, TPS ~20 both.
+- [x] Documented limits: host-wide system CPU was variable and includes
+      unrelated workload; small MSPT difference is not meaningful on its own.
+      No performance guarantee or mandatory larger-scale benchmark.
+      Optional future A/B/A or call-tree analysis is outside the acceptance gate.
 
 ## Test notes
 
@@ -433,4 +603,4 @@ build was not independently recorded. Full regression remains a Phase 7 gate.
 | October 31, 2026 / Phase 4 prepared | Static source review; Gradle unavailable offline (Java 21 installed) | PENDING | Equipment locks, safe live Equipment GUI preview and grouped property layout prepared; CI/CodeQL and live acceptance required. |
 | October 31, 2026 / Phase 4 closeout | CI/CodeQL (operator confirmed), Paper 26.3 live | PASS (targeted) | Lock matrix and equipment paste across Creative/Survival passed; no additional regressions observed. Hard-crash atomicity and separately unchecked extraordinary scenarios remain final regression gates. |
 | October 31, 2026 / Phase 5 acceptance | Paper 26.3 live testing (operator reported) | PASS (targeted) | Marker recovery and all Phase 5 checks passed with no new regressions; CHAIN icon corrected to EXPOSED_COPPER_CHAIN in supplied baseline. |
-| October 31, 2026 / Phase 6 prepared | Local source/static review; Java 25 Gradle unavailable here | PENDING | Restricted Marker/No Ticking, glow handling, per-stand tick state, copy/paste and higher GUI layout; CI and Paper/spark testing required. |
+| October 31, 2026 / Phase 6 accepted | Paper 26.3 live testing and Gradle CI/CodeQL (operator-reported) | PASS (targeted) | Restricted Marker/No Ticking, per-stand restart persistence, target isolation, glow, copy/paste and legacy behavior passed. 50-stand spark export suggests lower process CPU but nearly unchanged MSPT; not a controlled performance guarantee. Full Phase 7 regression remains outstanding. |

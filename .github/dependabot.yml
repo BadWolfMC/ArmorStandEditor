@@ -2,9 +2,13 @@ version: 2
 updates:
   - package-ecosystem: gradle
     directory: /
+    # Version-update PRs target develop; security updates still target the default branch.
+    target-branch: develop
     schedule:
       interval: weekly
   - package-ecosystem: github-actions
     directory: /
+    # Version-update PRs target develop; security updates still target the default branch.
+    target-branch: develop
     schedule:
       interval: weekly

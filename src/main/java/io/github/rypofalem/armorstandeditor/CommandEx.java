@@ -6,184 +6,200 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 package io.github.rypofalem.armorstandeditor;
 
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.rypofalem.armorstandeditor.modes.AdjustmentMode;
 import io.github.rypofalem.armorstandeditor.modes.Axis;
 import io.github.rypofalem.armorstandeditor.modes.EditMode;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-public class CommandEx implements CommandExecutor{
-	ArmorStandEditorPlugin plugin;
-	final String LISTMODE = ChatColor.GREEN + "/ase mode <" + Util.getEnumList(EditMode.class) + ">";
-	final String LISTAXIS = ChatColor.GREEN + "/ase axis <" + Util.getEnumList(Axis.class) + ">";
-	final String LISTADJUSTMENT = ChatColor.GREEN + "/ase adj <" + Util.getEnumList(AdjustmentMode.class) + ">";
-	final String LISTSLOT =  ChatColor.GREEN + "/ase slot <1-9>";
-	final String HELP = ChatColor.GREEN + "/ase help";
-	final String LISTGUI = ChatColor.GREEN + "/ase gui";
+/** Native Paper Brigadier command. All literals and argument values are lowercase. */
+public final class CommandEx {
+    private final ArmorStandEditorPlugin plugin;
 
-	public CommandEx(ArmorStandEditorPlugin armorStandEditorPlugin) {
-		this.plugin = armorStandEditorPlugin;
-	}
+    public CommandEx(ArmorStandEditorPlugin plugin) {
+        this.plugin = plugin;
+    }
 
-	@Override
-	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if(!(sender instanceof Player
-				&& checkPermission((Player)sender,"basic",true))){
-			sender.sendMessage(plugin.getLang().getMessage("noperm", "warn"));
-			return true;
-		}
+    /** One registration callback, rebuilt by Paper when the command lifecycle reruns. */
+    public void register(Commands registrar) {
+        registrar.register(Commands.literal("ase")
+            .requires(source -> source.getSender() instanceof Player player
+                && player.hasPermission("asedit.basic"))
+            .executes(this::executeRoot)
+            .then(Commands.literal("help").executes(this::executeHelp))
+            .then(Commands.literal("?").executes(this::executeHelp))
+            .then(Commands.literal("gui").executes(this::executeGui))
+            .then(Commands.literal("mode")
+                .executes(context -> missingValue(context, "nomodecom", modeUsage(player(context))))
+                .then(Commands.argument("value", StringArgumentType.word())
+                    .suggests(this::suggestModes)
+                    .executes(this::executeMode)))
+            .then(Commands.literal("axis")
+                .executes(context -> missingValue(context, "noaxiscom", axisUsage()))
+                .then(Commands.argument("value", StringArgumentType.word())
+                    .suggests((context, builder) -> suggest(builder, CommandOptions.axes()))
+                    .executes(this::executeAxis)))
+            .then(Commands.literal("adj")
+                .executes(context -> missingValue(context, "noadjcom", adjUsage()))
+                .then(Commands.argument("value", StringArgumentType.word())
+                    .suggests((context, builder) -> suggest(builder, CommandOptions.adjustments()))
+                    .executes(this::executeAdj)))
+            .then(Commands.literal("slot")
+                .executes(context -> missingValue(context, "noslotnumcom", slotUsage()))
+                .then(Commands.argument("value", StringArgumentType.word())
+                    .suggests((context, builder) -> suggest(builder, CommandOptions.SLOTS))
+                    .executes(this::executeSlot)))
+            // Preserve friendly usage feedback on unknown first arguments without
+            // turning known command names into case-insensitive word arguments.
+            .then(Commands.argument("unknown", StringArgumentType.word())
+                .executes(context -> {
+                    Player player = authorizedPlayer(context);
+                    if (player != null) showUsage(player, true);
+                    return Command.SINGLE_SUCCESS;
+                }))
+            .build(), "Changes the function of the armor stand edit tool.");
+    }
 
-		Player player = (Player) sender;
-		if(args.length == 0){
-			player.sendMessage(LISTMODE);
-			player.sendMessage(LISTAXIS);
-			player.sendMessage(LISTSLOT);
-			player.sendMessage(LISTADJUSTMENT);
-			player.sendMessage(LISTGUI);
-			return true;
-		}
-		switch(args[0].toLowerCase()){
-			case "gui":
-				// Explicit menu access in tight spaces, without intercepting block clicks.
-				plugin.editorManager.getPlayerEditor(player.getUniqueId()).chestMenu.openMenu();
-				break;
-			case "mode": commandMode(player, args);
-				break;
-			case "axis": commandAxis(player, args);
-				break;
-			case "adj": commandAdj(player, args);
-				break;
-			case "slot": commandSlot(player, args);
-				break;
-			case "help":
-			case "?": commandHelp(player);
-				break;
-			default:
-				sender.sendMessage(LISTMODE);
-				sender.sendMessage(LISTAXIS);
-				sender.sendMessage(LISTSLOT);
-				sender.sendMessage(LISTADJUSTMENT);
-				sender.sendMessage(HELP);
-				sender.sendMessage(LISTGUI);
-		}
-		return true;
-	}
+    private Player player(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        return sender instanceof Player p ? p : null;
+    }
 
-	private void commandSlot(Player player, String[] args) {
+    private Player authorizedPlayer(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        if (!(sender instanceof Player player) || !player.hasPermission("asedit.basic")) {
+            sender.sendMessage(plugin.getLang().getMessage("noperm", "warn"));
+            return null;
+        }
+        return player;
+    }
 
-		if(args.length <=1){
-			player.sendMessage(plugin.getLang().getMessage("noslotnumcom", "warn"));
-			player.sendMessage(LISTSLOT);
-		}
+    private CompletableFuture<Suggestions> suggestModes(CommandContext<CommandSourceStack> context,
+                                                         SuggestionsBuilder builder) {
+        Player player = player(context);
+        if (player == null || !player.hasPermission("asedit.basic")) return builder.buildFuture();
+        return suggest(builder, CommandOptions.modes(player::hasPermission));
+    }
 
-		if(args.length > 1){
-			try{
-				byte slot = (byte) (Byte.parseByte(args[1]) - 0b1);
-				if(slot >= 0 && slot < 9){
-					plugin.editorManager.getPlayerEditor(player.getUniqueId()).setCopySlot(slot);
-				}else{
-					player.sendMessage(LISTSLOT);
-				}
+    private static CompletableFuture<Suggestions> suggest(SuggestionsBuilder builder, List<String> values) {
+        for (String value : CommandOptions.matching(values, builder.getRemaining())) builder.suggest(value);
+        return builder.buildFuture();
+    }
 
-			}catch(NumberFormatException nfe){
-				player.sendMessage(LISTSLOT);
-			}
-		}
-	}
+    private static String value(CommandContext<CommandSourceStack> context) {
+        return StringArgumentType.getString(context, "value");
+    }
 
-	private void commandAdj(Player player, String[] args) {
-		if(args.length <=1){
-			player.sendMessage(plugin.getLang().getMessage("noadjcom", "warn"));
-			player.sendMessage(LISTADJUSTMENT );
-		}
+    private int executeRoot(CommandContext<CommandSourceStack> context) {
+        Player player = authorizedPlayer(context);
+        if (player != null) showUsage(player, false);
+        return Command.SINGLE_SUCCESS;
+    }
 
-		if(args.length > 1){
-			for(AdjustmentMode adj : AdjustmentMode.values()){
-				if(adj.toString().toLowerCase().contentEquals(args[1].toLowerCase())){
-					plugin.editorManager.getPlayerEditor(player.getUniqueId()).setAdjMode(adj);
-					return;
-				}
-			}
-			player.sendMessage(LISTADJUSTMENT);
-		}
-	}
+    private int executeHelp(CommandContext<CommandSourceStack> context) {
+        Player player = authorizedPlayer(context);
+        if (player != null) showHelp(player);
+        return Command.SINGLE_SUCCESS;
+    }
 
-	private void commandAxis(Player player, String[] args) {
-		if(args.length <=1){
-			player.sendMessage(plugin.getLang().getMessage("noaxiscom", "warn"));
-			player.sendMessage(LISTAXIS);
-		}
+    private int executeGui(CommandContext<CommandSourceStack> context) {
+        Player player = authorizedPlayer(context);
+        if (player != null) plugin.editorManager.getPlayerEditor(player.getUniqueId()).chestMenu.openMenu();
+        return Command.SINGLE_SUCCESS;
+    }
 
-		if(args.length > 1){
-			for(Axis axis : Axis.values()){
-				if(axis.toString().toLowerCase().contentEquals(args[1].toLowerCase())){
-					plugin.editorManager.getPlayerEditor(player.getUniqueId()).setAxis(axis);
-					return;
-				}
-			}
-			player.sendMessage(LISTAXIS);
-		}
-	}
+    private int executeMode(CommandContext<CommandSourceStack> context) {
+        Player player = authorizedPlayer(context);
+        if (player == null) return Command.SINGLE_SUCCESS;
+        EditMode mode = CommandOptions.matchingEnum(EditMode.class, value(context));
+        if (mode == null) player.sendMessage(modeUsage(player));
+        else if (!CommandOptions.permitted(mode, player::hasPermission))
+            player.sendMessage(plugin.getLang().getMessage("noperm", "warn"));
+        else plugin.editorManager.getPlayerEditor(player.getUniqueId()).setMode(mode);
+        return Command.SINGLE_SUCCESS;
+    }
 
-	private void commandMode(Player player, String[] args) {
-		if(args.length <=1){
-			player.sendMessage(plugin.getLang().getMessage("nomodecom", "warn"));
-			player.sendMessage(LISTMODE);
-		}
+    private int executeAxis(CommandContext<CommandSourceStack> context) {
+        Player player = authorizedPlayer(context);
+        if (player == null) return Command.SINGLE_SUCCESS;
+        Axis axis = CommandOptions.matchingEnum(Axis.class, value(context));
+        if (axis == null) player.sendMessage(axisUsage());
+        else plugin.editorManager.getPlayerEditor(player.getUniqueId()).setAxis(axis);
+        return Command.SINGLE_SUCCESS;
+    }
 
-		if(args.length > 1){
-			for(EditMode mode : EditMode.values()){
-				if(mode.toString().toLowerCase().contentEquals(args[1].toLowerCase())){
-					if(mode == EditMode.INVISIBLE && !checkPermission(player, "invisible", true)) return;
-					if(mode == EditMode.LOCKEQUIPMENT && !checkPermission(player, "lockequipment", true)) return;
-					if(mode == EditMode.MARKER && !checkPermission(player, "marker", true)) return;
-					if(mode == EditMode.NOTICK && !checkPermission(player, "notick", true)) return;
-					plugin.editorManager.getPlayerEditor(player.getUniqueId()).setMode(mode);
-					return;
-				}
-			}
-		}
-	}
+    private int executeAdj(CommandContext<CommandSourceStack> context) {
+        Player player = authorizedPlayer(context);
+        if (player == null) return Command.SINGLE_SUCCESS;
+        AdjustmentMode adj = CommandOptions.matchingEnum(AdjustmentMode.class, value(context));
+        if (adj == null) player.sendMessage(adjUsage());
+        else plugin.editorManager.getPlayerEditor(player.getUniqueId()).setAdjMode(adj);
+        return Command.SINGLE_SUCCESS;
+    }
 
-	private void commandHelp(Player player){
-		player.closeInventory();
-		player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
-		player.sendMessage(plugin.getLang().getMessage("help", "info", plugin.editTool.name()));
-		player.sendMessage("");
-		player.sendMessage(plugin.getLang().getMessage("helptips", "info"));
-		player.sendMessage("");
-		player.sendRawMessage(plugin.getLang().getMessage("helpurl", ""));
-		player.sendMessage(LISTGUI);
-	}
+    private int executeSlot(CommandContext<CommandSourceStack> context) {
+        Player player = authorizedPlayer(context);
+        if (player == null) return Command.SINGLE_SUCCESS;
+        try {
+            int slot = Integer.parseInt(value(context));
+            if (slot >= 1 && slot <= 9)
+                plugin.editorManager.getPlayerEditor(player.getUniqueId()).setCopySlot((byte) (slot - 1));
+            else player.sendMessage(slotUsage());
+        } catch (NumberFormatException ex) {
+            player.sendMessage(slotUsage());
+        }
+        return Command.SINGLE_SUCCESS;
+    }
 
-	private boolean checkPermission(Player player, String permName, boolean sendMessageOnInvalidation){
-		if(permName.toLowerCase().equals("paste")){
-			permName = "copy";
-		}
-		if(player.hasPermission("asedit." + permName.toLowerCase())){
-			return true;
-		}else{
-			if(sendMessageOnInvalidation){
-				player.sendMessage(plugin.getLang().getMessage("noperm", "warn"));
-			}
-			return false;
-		}
-	}
+    private int missingValue(CommandContext<CommandSourceStack> context, String key, String usage) {
+        Player player = authorizedPlayer(context);
+        if (player != null) {
+            player.sendMessage(plugin.getLang().getMessage(key, "warn"));
+            player.sendMessage(usage);
+        }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private String modeUsage(Player player) {
+        List<String> modes = player != null ? CommandOptions.modes(player::hasPermission) : List.of();
+        return ChatColor.GREEN + "/ase mode <" + String.join(" | ", modes) + ">";
+    }
+
+    private static String axisUsage() { return ChatColor.GREEN + "/ase axis <x|y|z>"; }
+    private static String adjUsage() { return ChatColor.GREEN + "/ase adj <coarse|fine>"; }
+    private static String slotUsage() { return ChatColor.GREEN + "/ase slot <1-9>"; }
+
+    private void showUsage(Player player, boolean includeHelp) {
+        player.sendMessage(modeUsage(player));
+        player.sendMessage(axisUsage());
+        player.sendMessage(slotUsage());
+        player.sendMessage(adjUsage());
+        if (includeHelp) player.sendMessage(ChatColor.GREEN + "/ase help");
+        player.sendMessage(ChatColor.GREEN + "/ase gui");
+    }
+
+    private void showHelp(Player player) {
+        player.closeInventory();
+        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
+        player.sendMessage(plugin.getLang().getMessage("help", "info", plugin.editTool.name()));
+        player.sendMessage("");
+        player.sendMessage(plugin.getLang().getMessage("helptips", "info"));
+        player.sendMessage("");
+        player.sendMessage(plugin.getLang().getMessage("helpurl", ""));
+        player.sendMessage(ChatColor.GREEN + "/ase gui");
+    }
 }

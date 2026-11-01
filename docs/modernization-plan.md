@@ -13,9 +13,12 @@ and all ten live regression groups passed (BadWolfMC administration).
 CI and creative/survival locking and copy/paste matrix, with no further
 regressions observed. **Phase 5 accepted on `develop` (2026-10-31):** operator reports all
 Paper live tests passed with no regressions; fixed unavailable CHAIN material
-to `EXPOSED_COPPER_CHAIN` in the supplied repository. **Phase 6 is prepared
-locally, with operator-reported green CI; Phase 6 live acceptance remains pending
-while a stale target-selection ambiguity is retested. Phase 7 has not started.** `main` remains stable.
+to `EXPOSED_COPPER_CHAIN` in the supplied repository. **Phase 6 accepted on `develop` (2026-10-31):** operator confirmed
+CI remained green, the stale-target follow-up corrected the observed
+cross-stand ambiguity, and live Paper checks (including restricted permissions,
+copy/paste, persistence and highlight behavior) passed without new regressions.
+A 50-stand spark test was recorded as encouraging but not conclusive evidence
+of a CPU improvement. **Phase 7 release candidate prepared from the uploaded working tree; awaiting CI and in-game acceptance.** `main` remains stable.
 Gradle CI and CodeQL passed for Phase 1; the checksum-verified Gradle Wrapper
 JAR is present in the repository; the Gradle-built plugin loaded and basic
 editing worked on a test server. The complete release regression suite is a
@@ -319,7 +322,7 @@ Phase 6; they are not marked live-tested yet.
 - Benchmark comparable loaded stand counts (e.g. 250/500/1000 where safe)
   with spark/MSPT data. Do not promise a speedup without measurement.
 
-**Phase 6 implementation (prepared locally, pending CI/live):** Added
+**Phase 6 implementation (accepted 2026-10-31):** Added
 `/ase mode notick` and the No Ticking clock icon (`asedit.notick`, default
 `op`), which toggles the native per-stand `canTick` flag without changing
 existing stands on enable. `ArmorStandData` includes ticking in copy/paste;
@@ -344,10 +347,25 @@ distinguished**; verify this interaction live. No extra highlighting system
 or permanent entity metadata was introduced. Ticking persistence relies on
 Paper's native explicit armor stand ticking override, not a new PDC key.
 
-**Exit (pending):** Java 25 CI/CodeQL and live Paper checks, including
-restricted permissions, restart persistence, glow transitions, equipment,
-creative/survival editing and comparable MSPT/spark measurements. Do not claim
-measured performance gains before data is collected.
+**Exit (accepted 2026-10-31 on `develop`):** BadWolfMC administration
+reported green Java 25 Gradle CI and CodeQL, and completed the Phase 6 live
+regression suite without further failures. The stale selected-target override
+was corrected to favor a physically clicked stand unless stands are
+co-located; the resulting independent No Ticking changes were observed in
+game. The tested behavior includes per-stand toggling/persistence, editing
+and equipment sync, the `asedit.marker`/`asedit.notick` gates (including
+paste), Marker recovery and highlighting. This is operator-reported runtime
+verification, not a build performed in this environment.
+
+**Optional spark observation (not an acceptance gate):** A 50-stand comparison
+was recorded as `OJ1fIRAFxh.sparkprofile` (7 min 28 sec, Paper 26.3).
+Across three full one-minute windows before the apparent transition and four
+after, mean *system* CPU was 33.1% versus 10.6%, mean *process* CPU was
+1.79% versus 1.54%, averaged one-minute median MSPT was 2.23 ms versus
+2.22 ms, and TPS remained about 20. The changeover was inferred from the
+profile graph, not timestamped; system CPU includes unrelated host load,
+so this is not a controlled causal measurement of the No Ticking benefit.
+No further benchmarking is required for Phase 6 acceptance.
 
 ### Phase 7 — Command modernization, targeted cleanup and release
 
@@ -358,7 +376,7 @@ measured performance gains before data is collected.
   controlled migration, without registering `/ase` twice.
 - Provide client-side tab suggestions and argument validation for `gui`,
   `help`, `?`, `mode`, `axis`, `adj` and `slot`, including enum values and slots
-  1–9. Preserve existing command spellings, case-insensitive inputs, actual
+  1–9. For Phase 7, standardize command spellings and values on lowercase; actual
   effects, and user-facing help/feedback where applicable. Do not suggest
   unfinished/unauthorized modes, including `DISABLESLOTS` prior to its Phase 4
   replacement. Newly introduced mode names from Phases 3–6 must be included.
@@ -395,8 +413,10 @@ when their work is complete.
   live testing, particularly non-op `asedit.basic` users. No new edit grants
   are intended. `asedit.rename` still requires the master gate and the
   mode-specific node. `asedit.disableslots` remains deferred to Phase 4.
-- What is the safest way to recognize editor-owned Glowing without removing
-  other sources' effects? Verify under ticking transitions.
+- **Phase 6 documented limitation:** temporary 15-tick editor glow is tracked
+  in memory; Bukkit cannot conclusively identify another plugin's otherwise
+  identical Glowing effect. Operator tested normal transitions successfully.
+  Recheck only if integrating with another plugin applying matching effects.
 - Is `setCanMove` persisted by the target server version, or is a PDC restore
   necessary? Check behavior, not only API signatures.
 - How are locked or invulnerable stands affected by entity interaction event
@@ -409,3 +429,16 @@ Update completed phase statuses as work is verified. Do **not** copy phase
 checklists wholesale into `changelog.md`: that file should describe only
 completed, user/developer-relevant changes. After Phase 7, remove the temporary
 planning documents in a separate housekeeping commit; keep `changelog.md`.
+
+## Phase 7 implementation status (release candidate only)
+
+- Native command registration uses `LifecycleEvents.COMMANDS` in `onEnable`, with
+  one lowercase `/ase` Brigadier root and literal subcommands. The `plugin.yml`
+  command declaration and `getCommand(...).setExecutor(...)` have been removed.
+- Lowercase command input replaces legacy mixed-case acceptance intentionally;
+  the GUI's embedded commands are already lowercase. Suggestions show only
+  modes allowed by `asedit.basic` plus each restricted mode's permission node.
+- The candidate includes focused command-option unit tests and fixes missing
+  language-file fallback without altering existing translation resources.
+- CI/CodeQL, full Java 25 compilation and live Paper 26.3 tests are still
+  required; preserve the temporary plan and checklist until final acceptance.

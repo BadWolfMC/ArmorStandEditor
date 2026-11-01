@@ -10,6 +10,7 @@
 package io.github.rypofalem.armorstandeditor.menu;
 
 import io.github.rypofalem.armorstandeditor.PlayerEditor;
+import io.github.rypofalem.armorstandeditor.language.Language;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -24,7 +25,6 @@ import org.bukkit.persistence.PersistentDataType;
 import java.util.ArrayList;
 import java.util.UUID;
 
-import static net.kyori.adventure.text.Component.text;
 
 /**
  * Read-only preview of an armor stand's live equipment. The six lower slots
@@ -44,14 +44,14 @@ public final class EquipmentMenu {
     this.stand = stand;
     this.owner = editor.getUUID();
     String title = editor.plugin.getLang().getMessage("equiptitle", "menutitle");
-    menuInv = Bukkit.createInventory(editor.getManager().getEquipmentHolder(), 18, text(title));
+    menuInv = Bukkit.createInventory(editor.getManager().getEquipmentHolder(), 18, Language.component(title));
     fillInventory();
   }
 
   private void fillInventory() {
     ItemStack disabled = new ItemStack(Material.BARRIER);
     ItemMeta meta = disabled.getItemMeta();
-    meta.displayName(text(editor.plugin.getLang().getMessage("disabled", "warn")));
+    meta.displayName(Language.component(editor.plugin.getLang().getMessage("disabled", "warn")));
     meta.getPersistentDataContainer().set(editor.plugin.getIconKey(), PersistentDataType.STRING, "ase icon");
     disabled.setItemMeta(meta);
 
@@ -74,9 +74,9 @@ public final class EquipmentMenu {
     ItemStack icon = new ItemStack(material);
     ItemMeta meta = icon.getItemMeta();
     meta.getPersistentDataContainer().set(editor.plugin.getIconKey(), PersistentDataType.STRING, "ase icon");
-    meta.displayName(text(editor.plugin.getLang().getMessage("equipslot", "iconname", slot)));
+    meta.displayName(Language.component(editor.plugin.getLang().getMessage("equipslot", "iconname", slot)));
     ArrayList<Component> lore = new ArrayList<>();
-    lore.add(text(editor.plugin.getLang().getMessage("equipslot.description", "icondescription", slot)));
+    lore.add(Language.component(editor.plugin.getLang().getMessage("equipslot.description", "icondescription", slot)));
     meta.lore(lore);
     meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
     meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);

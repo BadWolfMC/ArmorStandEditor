@@ -21,6 +21,8 @@ package io.github.rypofalem.armorstandeditor.language;
 
 import io.github.rypofalem.armorstandeditor.ArmorStandEditorPlugin;
 import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.*;
@@ -44,28 +46,39 @@ public class Language {
         File langFolder = new File(plugin.getDataFolder().getPath() + File.separator + "lang");
         langFile = new File(langFolder, langFileName);
 
-        InputStream input = plugin.getResource("lang" + "/" + DEFAULTLANG); //getResource doesn't accept File.seperator on windows, need to hardcode unix seperator "/" instead
-        assert input != null;
-        Reader defaultLangStream = new InputStreamReader(input, StandardCharsets.UTF_8);
-        defConfig = YamlConfiguration.loadConfiguration(defaultLangStream);
-
-        input = null;
-        try {
-            input = new FileInputStream(langFile);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return;
+        InputStream fallback = plugin.getResource("lang/" + DEFAULTLANG);
+        if (fallback == null) {
+            throw new IllegalStateException("Missing packaged English language fallback: " + DEFAULTLANG);
+        }
+        try (Reader reader = new InputStreamReader(fallback, StandardCharsets.UTF_8)) {
+            defConfig = YamlConfiguration.loadConfiguration(reader);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to read packaged English fallback", e);
         }
 
-        Reader langStream = new InputStreamReader(input, StandardCharsets.UTF_8);
-        langConfig = YamlConfiguration.loadConfiguration(langStream);
+        // Missing custom locale must fall back to English instead of leaving
+        // langConfig null and crashing on the first message lookup.
+        langConfig = new YamlConfiguration();
+        if (langFile.isFile()) {
+            try (Reader reader = new InputStreamReader(new FileInputStream(langFile), StandardCharsets.UTF_8)) {
+                langConfig = YamlConfiguration.loadConfiguration(reader);
+            } catch (IOException e) {
+                plugin.getLogger().warning("Unable to load locale " + langFile.getName() + "; using English fallback");
+            }
+        } else {
+            plugin.getLogger().warning("Locale " + langFile.getName() + " was not found; using English fallback");
+        }
+    }
+
+    /** Interpret the existing section-code formatting when using Adventure components. */
+    public static Component component(String legacyText) {
+        return LegacyComponentSerializer.legacySection().deserialize(legacyText);
     }
 
     //path: yml path to message in language file
     //format: yml path to format in language file
     //option: path-specific variable that may be used
     public String getMessage(String path, String format, String option) {
-        if (langConfig == null) reloadLang(langFile.getName());
         if (path == null) return "";
         if (option == null) option = "";
 
@@ -75,9 +88,9 @@ public class Language {
         }
 
         if (getString(path + "." + option) != null) option = getString(path + "." + option);
-        String message = format + getString(path + ".msg");
-        message = message.replace("<x>", option);
-        return message;
+        String message = getString(path + ".msg");
+        if (message == null) return "";
+        return format + message.replace("<x>", option);
     }
 
     public String getMessage(String path, String format) {
@@ -125,7 +138,7 @@ public class Language {
 
     private String getString(String path) {
         String message = null;
-        if (langConfig.contains(path)) {
+        if (langConfig != null && langConfig.contains(path)) {
             message = langConfig.getString(path);
         } else if (defConfig.contains(path)) {
             message = defConfig.getString(path);

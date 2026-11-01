@@ -177,6 +177,7 @@ public class PlayerEditorManager implements Listener {
 
       // Minecraft may overwrite the name even if this event is cancelled.
       Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        if (!as.isValid()) return; // Stand may be removed/unloaded before the next tick.
         as.setCustomName(name);
         as.setCustomNameVisible(true);
       }, 1);
@@ -371,10 +372,20 @@ public class PlayerEditorManager implements Listener {
               .get(plugin.getIconKey(), PersistentDataType.STRING);
           if ("ase target select".equals(command)) {
             selectTarget(player);
-          } else if ("ase target apply".equals(command)) {
-            applySelectedTarget(player, false);
-          } else if ("ase target reverse".equals(command)) {
-            applySelectedTarget(player, true);
+          } else if ("ase target apply".equals(command) ||
+              "ase target reverse".equals(command) || "ase help".equals(command) ||
+              "ase gui".equals(command)) {
+            // Applying Equipment or running Help/GUI may open or close an inventory.
+            // Paper forbids those transitions during InventoryClickEvent. Recheck
+            // the open menu and permissions when the next-tick task actually runs.
+            String deferredCommand = command;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+              if (!player.isOnline() || !player.hasPermission("asedit.basic") ||
+                  player.getOpenInventory().getTopInventory() != top) return;
+              if ("ase target apply".equals(deferredCommand)) applySelectedTarget(player, false);
+              else if ("ase target reverse".equals(deferredCommand)) applySelectedTarget(player, true);
+              else player.performCommand(deferredCommand);
+            });
           } else if (command != null) {
             player.performCommand(command);
           }
@@ -456,8 +467,11 @@ public class PlayerEditorManager implements Listener {
 
   @EventHandler(priority = EventPriority.MONITOR)
   void onPlayerLogOut(PlayerQuitEvent event) {
-    equipmentMenus.remove(event.getPlayer().getUniqueId());
-    removePlayerEditor(event.getPlayer().getUniqueId());
+    UUID uuid = event.getPlayer().getUniqueId();
+    equipmentMenus.remove(uuid);
+    PlayerEditor editor = players.get(uuid);
+    if (editor != null) editor.cancelOpenMenu();
+    removePlayerEditor(uuid);
   }
 
   public EquipmentMenu openEquipmentMenu(PlayerEditor editor, ArmorStand stand) {
@@ -476,7 +490,8 @@ public class PlayerEditorManager implements Listener {
   }
 
   public void closeEditorMenus() {
-    // Do not leave either inventory type interactive after listeners disable.
+    // Do not leave pending openings or either menu type interactive after disable.
+    for (PlayerEditor editor : players.values()) editor.cancelOpenMenu();
     for (Player player : Bukkit.getOnlinePlayers()) {
       Inventory top = player.getOpenInventory().getTopInventory();
       if (top.getHolder() == equipmentHolder || top.getHolder() == menuHolder) {
