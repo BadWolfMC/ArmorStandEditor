@@ -39,6 +39,7 @@ public final class ArmorStandData {
   public final boolean invulnerable;
   public final boolean marker;
   public final boolean canMove;
+  public final boolean canTick;
   public final boolean[] equipmentLocks;
   public final boolean basePlate;
   public final boolean gravity;
@@ -63,6 +64,7 @@ public final class ArmorStandData {
     this.invulnerable = as.isMarkedInvulnerable();
     this.marker = as.isMarker();
     this.canMove = as.canMove();
+    this.canTick = as.canTick();
     this.equipmentLocks = EquipmentLocks.snapshot(as);
     this.basePlate = as.hasBasePlate();
     this.gravity = as.hasGravity();

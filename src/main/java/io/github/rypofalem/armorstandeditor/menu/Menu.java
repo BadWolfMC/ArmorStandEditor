@@ -57,7 +57,7 @@ public class Menu {
       rightArmPos = null, bodyPos = null, leftArmPos = null, reset = null, showArms = null, visibility = null, size = null,
       rightLegPos = null, equipment = null, leftLegPos = null, lockEquipment = null, gravity = null, plate = null, scale = null, invulnerable = null, copy = null, paste = null,
       slot1 = null, slot2 = null, slot3 = null, slot4 = null, help = null,
-      marker = null, noMovement = null, selectTarget = null, applyTarget = null, reverseTarget = null;
+      marker = null, noMovement = null, noTick = null, selectTarget = null, applyTarget = null, reverseTarget = null;
 
     xAxis = createIcon(new ItemStack(Material.RED_WOOL, 1),
       "xaxis", "axis x");
@@ -124,6 +124,7 @@ public class Menu {
 
     marker = createIcon(new ItemStack(Material.ARMOR_STAND), "marker", "mode marker");
     noMovement = createIcon(new ItemStack(Material.EXPOSED_COPPER_CHAIN), "nomovement", "mode nomovement");
+    noTick = createIcon(new ItemStack(Material.CLOCK), "notick", "mode notick");
 
     gravity = createIcon(new ItemStack(Material.SAND), "gravity", "mode gravity");
 
@@ -163,8 +164,8 @@ public class Menu {
     reverseTarget = createIcon(new ItemStack(Material.ORANGE_DYE), "reversetarget", "target reverse");
 
     // Position tools (top), pose controls (left), and stand properties (right).
-    // Keep property slots together for the Phase 5/6 additions; in particular,
-    // Size and Scale are neighbors and remain separate editing modes.
+    // Three property rows start at 14, 23, 32; target actions move to 41-43.
+    // Size/Scale and Invulnerability/Lock Equipment remain adjacent.
     ItemStack[] items = new ItemStack[54];
     items[0] = xAxis;
     items[1] = yAxis;
@@ -183,17 +184,17 @@ public class Menu {
     items[28] = equipment;
     items[29] = leftLegPos;
 
-    items[23] = showArms;
-    items[24] = visibility;
-    items[25] = size;
-    items[26] = scale;
-    items[32] = invulnerable;
-    items[33] = lockEquipment;
-    items[34] = gravity;
-    items[35] = plate;
-    items[41] = marker;
-    items[42] = noMovement;
-    // Slot 43 remains reserved for the future Ticking toggle.
+    items[14] = showArms;
+    items[15] = visibility;
+    items[16] = size;
+    items[17] = scale;
+    items[23] = invulnerable;
+    items[24] = lockEquipment;
+    items[25] = gravity;
+    items[26] = plate;
+    items[32] = marker;
+    items[33] = noMovement;
+    items[34] = noTick;
 
     items[37] = copy;
     items[38] = paste;
@@ -201,9 +202,9 @@ public class Menu {
     items[46] = slot2;
     items[47] = slot3;
     items[48] = slot4;
-    items[49] = selectTarget;
-    items[50] = applyTarget;
-    items[51] = reverseTarget;
+    items[41] = selectTarget;
+    items[42] = applyTarget;
+    items[43] = reverseTarget;
     items[53] = help;
     menuInv.setContents(items);
   }

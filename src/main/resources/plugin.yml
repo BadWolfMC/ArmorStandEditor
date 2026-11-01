@@ -20,6 +20,12 @@ permissions:
     asedit.lockequipment:
       description: Toggle armor stand equipment locks.
       default: op
+    asedit.marker:
+      description: Toggle and paste marker armor stand state.
+      default: op
+    asedit.notick:
+      description: Toggle and paste armor stand ticking state.
+      default: op
     asedit.rename:
       description: Rename armorstands
       default: op

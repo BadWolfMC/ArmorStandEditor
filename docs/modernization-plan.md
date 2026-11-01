@@ -11,8 +11,10 @@
 and all ten live regression groups passed (BadWolfMC administration).
 **Phase 4 accepted on `develop` (2026-10-31):** operator confirmed green
 CI and creative/survival locking and copy/paste matrix, with no further
-regressions observed. **Phase 5 is implemented locally, awaiting CI and live
-Paper verification.** Phases 6–7 have not started; `main` remains stable.
+regressions observed. **Phase 5 accepted on `develop` (2026-10-31):** operator reports all
+Paper live tests passed with no regressions; fixed unavailable CHAIN material
+to `EXPOSED_COPPER_CHAIN` in the supplied repository. **Phase 6 is prepared
+locally, awaiting Java 25 CI and live acceptance; Phase 7 has not started.** `main` remains stable.
 Gradle CI and CodeQL passed for Phase 1; the checksum-verified Gradle Wrapper
 JAR is present in the repository; the Gradle-built plugin loaded and basic
 editing worked on a test server. The complete release regression suite is a
@@ -277,7 +279,7 @@ Extraordinary hard-crash atomicity is not claimed.
 - Add Marker and No Movement toggles; verify persistence and protection rules.
 - Keep the normal editor highlight where it remains applicable.
 
-**Phase 5 implementation (local, pending CI and live acceptance):** The
+**Phase 5 implementation (accepted 2026-10-31):** The
 existing sneak-free hand-swap selection and new main-GUI **Select Target**
 action cycle armor stands intersecting a 10-block sight ray. Sight checks
 include expanded non-marker bounding boxes and a deliberately approximate
@@ -296,12 +298,15 @@ entities load and for chunks already loaded on plugin enable. Re-enabling
 movement removes that PDC marker; untouched armor stands remain unaffected.
 Gravity, Ticking, Marker and ordinary authorized teleport-based placement
 remain independent. Marker does not introduce a special tick/highlight system.
-All new labels use existing English fallback. Phase 6's Ticking toggle and
-Phase 7's native Brigadier registration remain untouched.
+All new labels use existing English fallback. The Ticking toggle was
+reserved for Phase 6, while native Brigadier remains in Phase 7.
 
-**Exit (pending):** All affected stands can be selected, changed, and recovered
-safely, including after saves/restarts and through protection plugins; verify
-CI/CodeQL, creative and survival behavior and no regression to Phases 2–4.
+**Exit (accepted 2026-10-31):** BadWolfMC administration reported all Phase 5
+in-game regression tests passing with no new regressions; marker recovery was
+confirmed intuitive and reliable. The original `Material.CHAIN` icon was
+replaced by `EXPOSED_COPPER_CHAIN` in the supplied repository. The Marker
+permission restriction and layout refinement were intentionally carried into
+Phase 6; they are not marked live-tested yet.
 
 ### Phase 6 — No-tick control and measurements
 
@@ -313,8 +318,35 @@ CI/CodeQL, creative and survival behavior and no regression to Phases 2–4.
 - Benchmark comparable loaded stand counts (e.g. 250/500/1000 where safe)
   with spark/MSPT data. Do not promise a speedup without measurement.
 
-**Exit:** Ticking can be toggled safely; no permanent highlight; behavioral
-tradeoffs are documented and performance claims supported by measurements.
+**Phase 6 implementation (prepared locally, pending CI/live):** Added
+`/ase mode notick` and the No Ticking clock icon (`asedit.notick`, default
+`op`), which toggles the native per-stand `canTick` flag without changing
+existing stands on enable. `ArmorStandData` includes ticking in copy/paste;
+applying it requires `asedit.notick`, including when using Paste. Similarly,
+`asedit.marker` (default `op`) is required for Marker mode and any pasted
+Marker state. No Movement remains under `asedit.basic`. Permissions are checked
+both when selecting and when applying a mode, and unauthorized Paste retains
+the target's restricted state while applying other authorized properties.
+
+The property icon grid moves up one row: Show Arms=14, Invulnerability=23,
+Marker=32 and No Ticking=34; Select/Apply/Reverse Target are 41–43. Size/Scale
+and Invulnerability/Lock Equipment remain adjacent. All 54 slots are distinct.
+
+The temporary highlight is now tracked in memory, uses the previous short
+15-tick Glowing potion effect for ticking stands, skips non-ticking stands,
+and does not overwrite an unrecognized effect. When this plugin switches
+Ticking off, it removes only a recently plugin-applied effect with the known
+parameters; a different active effect is preserved. Since Bukkit potion
+effects do not carry unique source ownership, **another plugin applying an
+indistinguishable effect during that 15-tick window cannot be conclusively
+distinguished**; verify this interaction live. No extra highlighting system
+or permanent entity metadata was introduced. Ticking persistence relies on
+Paper's native explicit armor stand ticking override, not a new PDC key.
+
+**Exit (pending):** Java 25 CI/CodeQL and live Paper checks, including
+restricted permissions, restart persistence, glow transitions, equipment,
+creative/survival editing and comparable MSPT/spark measurements. Do not claim
+measured performance gains before data is collected.
 
 ### Phase 7 — Command modernization, targeted cleanup and release
 

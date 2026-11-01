@@ -41,8 +41,6 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.EulerAngle;
 import static net.kyori.adventure.text.Component.text;
 
@@ -139,6 +137,9 @@ public class PlayerEditor {
       break;
     case MARKER:
       toggleMarker(armorStand);
+      break;
+    case NOTICK:
+      toggleNoTick(armorStand);
       break;
     case NOMOVEMENT:
       toggleNoMovement(armorStand);
@@ -298,8 +299,14 @@ public class PlayerEditor {
     AttributeInstance scale = armorStand.getAttribute(Attribute.SCALE);
     if (scale != null && data.scale != null) scale.setBaseValue(ScaleAdjustment.clamp(data.scale));
     armorStand.setInvulnerable(data.invulnerable);
-    armorStand.setMarker(data.marker);
+    // Powerful entity states require their own permissions even when pasted.
+    if (getPlayer().hasPermission("asedit.marker")) {
+      armorStand.setMarker(data.marker);
+    }
     MovementControl.setCanMove(armorStand, data.canMove, plugin.getMovementKey());
+    if (getPlayer().hasPermission("asedit.notick") && armorStand.canTick() != data.canTick) {
+      setTicking(armorStand, data.canTick);
+    }
     // Equipment duplication has historically been Creative-only. Keep this
     // guard: allowing Survival pastes would create items from snapshots.
     if (getPlayer().getGameMode() == GameMode.CREATIVE) {
@@ -346,8 +353,20 @@ public class PlayerEditor {
   }
 
   private void toggleMarker(ArmorStand armorStand) {
+    if (!getPlayer().hasPermission("asedit.marker")) return;
     armorStand.setMarker(!armorStand.isMarker());
     sendMessage("setmarker", armorStand.isMarker() ? "on" : "off");
+  }
+
+  private void toggleNoTick(ArmorStand armorStand) {
+    if (!getPlayer().hasPermission("asedit.notick")) return;
+    setTicking(armorStand, !armorStand.canTick());
+    sendMessage("setnotick", armorStand.canTick() ? "off" : "on");
+  }
+
+  private void setTicking(ArmorStand armorStand, boolean canTick) {
+    if (!canTick) plugin.getHighlightControl().clearOwnedGlow(armorStand);
+    armorStand.setCanTick(canTick);
   }
 
   private void toggleNoMovement(ArmorStand armorStand) {
@@ -496,8 +515,7 @@ public class PlayerEditor {
   }
 
   private void highlight(ArmorStand armorStand) {
-    armorStand.removePotionEffect(PotionEffectType.GLOWING);
-    armorStand.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 15, 1, false, false));
+    plugin.getHighlightControl().highlight(armorStand);
   }
 
   public PlayerEditorManager getManager() {

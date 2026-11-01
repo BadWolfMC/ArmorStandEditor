@@ -31,6 +31,7 @@ import java.io.File;
 public class ArmorStandEditorPlugin extends JavaPlugin {
   private NamespacedKey iconKey;
   private NamespacedKey movementKey;
+  private final HighlightControl highlightControl = new HighlightControl();
   private static ArmorStandEditorPlugin instance;
   private CommandEx execute;
   private Language lang;
@@ -94,6 +95,7 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
   @Override
   public void onDisable() {
     if (editorManager != null) editorManager.closeEditorMenus();
+    highlightControl.clearTracking();
   }
 
   private void updateConfig(String folder, String config) {
@@ -132,6 +134,10 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
       if (!item.getItemMeta().getLore().get(0).equals(editToolLore)) return false;
     }
     return true;
+  }
+
+  HighlightControl getHighlightControl() {
+    return highlightControl;
   }
 
   public NamespacedKey getMovementKey() {

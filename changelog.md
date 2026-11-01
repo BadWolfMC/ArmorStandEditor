@@ -5,7 +5,25 @@ Keep entries concise and limited to work that has actually been completed.
 
 ## Unreleased
 
-### Phase 5 — Targeting, Marker and No Movement (prepared locally; acceptance pending)
+### Phase 6 — No Ticking and Phase 5 refinements (prepared; awaiting live acceptance)
+- Added opt-in per-stand `NOTICK` mode (`/ase mode notick`), with a Clock icon
+  and native `canTick`/`setCanTick` state included in copy/paste. Neither
+  world configuration nor untouched stands are modified.
+- Added `asedit.marker` and `asedit.notick` (both default `op`) for direct
+  mode use and paste, with enforcement after permission changes. No Movement
+  remains controlled by `asedit.basic`.
+- Moved property icons up one row: Show Arms at 14, Invulnerability at 23,
+  Marker at 32, No Ticking at 34, and target actions at 41–43. Retained
+  adjacent Size/Scale and Invulnerability/Lock Equipment controls.
+- Retained 15-tick editor glow for ticking stands; skip non-ticking stands,
+  avoid overwriting unrelated glowing effects and cautiously clear only a
+  recently recognized editor-applied effect on switching ticking off.
+  Identically matching effects from another plugin are not distinguishable
+  by Bukkit's effect API; verify against any such plugins in game.
+- **Pending:** CI/CodeQL, persistence/client synchronization, permission,
+  glow and performance regressions on Paper 26.3.
+
+### Phase 5 — Targeting, Marker and No Movement (accepted 2026-10-31)
 - Added independent Marker and No Movement controls to the grouped GUI and
   `/ase mode`, with copy/paste snapshots for both properties. Marker uses the
   native API; No Movement uses `setCanMove` and an entity PDC override restored
@@ -17,7 +35,10 @@ Keep entries concise and limited to work that has actually been completed.
   GUI buttons so Marker can be reversed without physically clicking the stand.
   Editor authorization and region protection are rechecked on explicit edits.
 - Added concise English fallback strings and a focused Phase 5 checklist.
-  **Pending:** Java 25 CI/CodeQL and in-game selection/persistence/protection tests.
+  **Accepted:** BadWolfMC administration reported all Phase 5 tests passing
+  with no regressions. Replaced the unavailable CHAIN material with
+  EXPOSED_COPPER_CHAIN in the supplied baseline; Marker permissions and the
+  requested GUI layout update are included in Phase 6.
 
 ### Phase 4 — Equipment locks and Equipment GUI safety (accepted 2026-10-31)
 - Replaced unfinished `DISABLESLOTS` with `LOCKEQUIPMENT` using both native

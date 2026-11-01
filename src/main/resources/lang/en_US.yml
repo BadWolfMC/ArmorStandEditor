@@ -29,6 +29,7 @@ setmode:
   lockequipment: Toggle Lock Equipment
   marker: Toggle Marker
   nomovement: Toggle No Movement
+  notick: Toggle No Ticking
   gravity: Toggle Gravity
   baseplate: Toggle BasePlate
   placement: Placement
@@ -63,6 +64,10 @@ setmarker:
   off: off
 setnomovement:
   msg: No Movement turned <x>.
+  on: on
+  off: off
+setnotick:
+  msg: No Ticking turned <x>.
   on: on
   off: off
 notargetinview:
@@ -207,6 +212,10 @@ nomovement:
   msg: No Movement
   description:
     msg: Prevent ordinary movement
+notick:
+  msg: No Ticking
+  description:
+    msg: Toggle ticking for this stand
 selecttarget:
   msg: Select Target
   description:

@@ -263,61 +263,91 @@ paste ordering/snapshot follow-up are included. Unchecked extraordinary cases
 remain in the checklist for the full Phase 7 regression gate; these are not
 separately claimed as witnessed.
 
-## Phase 5 — Targeting, Marker and No Movement (pending CI/live validation)
+## Phase 5 — Targeting, Marker and No Movement (accepted 2026-10-31)
 
-- [ ] After switching modes normally, look toward an ordinary armor stand and
+- [x] After switching modes normally, look toward an ordinary armor stand and
       press the hand-swap key with flint; target selection still works. Press
       again to cycle overlapping stands, and verify that protected stands are
       not made selectable by the new targeting code.
-- [ ] Select **Marker** from the GUI or `/ase mode marker`, enable it, then
+- [x] Select **Marker** from the GUI or `/ase mode marker`, enable it, then
       recover the same stand without its normal hitbox: look toward it, use
       hand-swap or the **Select Target** GUI icon, then **Apply to Target** to
       disable Marker. Repeat on invisible, small, Scale 0.1, Scale 15 and
       overlapping stands, in Creative and Survival.
-- [ ] With a selected stand in view, **Apply to Target** performs the left-click
+- [x] With a selected stand in view, **Apply to Target** performs the left-click
       direction, **Reverse on Target** the right-click direction (especially
       Scale, Placement and Rotate); toggles apply only once. With no target,
       out of range or looking away, no edit occurs and a warning appears.
-- [ ] Test walls, floors and dense displays: no targeting through solid blocks,
+- [x] Test walls, floors and dense displays: no targeting through solid blocks,
       no accidental editing of a different stand, and repeat cycling when
       selection changes or an entity is removed.
-- [ ] Verify normal flint on blocks and unrelated entities, sneak-scroll,
+- [x] Verify normal flint on blocks and unrelated entities, sneak-scroll,
       the offhand policy, `/ase gui`, original modes and Equipment GUI still
       behave as they did after Phases 2–4.
-- [ ] Test **No Movement** ON/OFF with and without Gravity: collisions/pushing
+- [x] Test **No Movement** ON/OFF with and without Gravity: collisions/pushing
       are blocked when frozen, while intentional placement/rotation/poses and
       equipment editing remain possible; thaw does not unintentionally move
       the stand or alter gravity.
-- [ ] Restart the server and reload chunks with frozen and unfrozen stands.
+- [x] Restart the server and reload chunks with frozen and unfrozen stands.
       Frozen stands remain frozen via the PDC setting, thawed/untouched stands
       move normally, and other plugins' armor stands are not automatically
       modified. Repeat across unloaded chunks and plugin startup.
-- [ ] Copy/paste Marker and No Movement alongside Scale, Invulnerability and
+- [x] Copy/paste Marker and No Movement alongside Scale, Invulnerability and
       locks, including a marker source/destination and locked/unlocked target;
       Creative pastes equipment, Survival skips it with existing warning.
-- [ ] As a player lacking `asedit.basic`, ensure target GUI, selecting, editing
+- [x] As a player lacking `asedit.basic`, ensure target GUI, selecting, editing
       or toggling does not work, and ordinary flint remains vanilla. With a
       region-protection denial or permissions revoked after target selection,
       **Apply to Target** and reverse are denied and properties remain intact.
-- [ ] Confirm English fallback text and new property positions (41=Marker,
-      42=No Movement; 43 reserved for Ticking), with normal highlight retained
-      on ordinary ticking stands; do not test Phase 6 no-ticking functionality
-      as an implemented feature.
-- [ ] CI (Gradle Java 25, JAR verifier, CodeQL) and live Paper 26.3 tests pass;
-      record acceptance before proceeding to Phase 6.
+- [x] Confirm Phase 5 GUI positions in its accepted build (41=Marker,
+      42=No Movement; 43 reserved for Ticking); Phase 6 relocates these controls
+      and introduces the tick toggle after this baseline.
+- [x] Operator confirmed Phase 5 tests passed with no regressions; Material.CHAIN
+      was corrected to EXPOSED_COPPER_CHAIN in the uploaded baseline.
 
-## Later-feature gates (Phases 6–7)
+## Phase 6 — No Ticking and restricted Marker (pending CI/live validation)
 
-- [ ] Ticking: new toggle is opt-in; default/previous state isn't changed on
-      plugin load; explicit change survives save/restart.
-- [ ] Ticking: pose/equipment updates reach the client with ticking disabled.
-- [ ] Ticking: effects, fire, physics, damage and interaction consequences are
-      understood and documented; compare against a ticking control stand.
-- [ ] Highlight: normal ticking stands retain short glow; no new highlight is
-      applied to non-ticking stands; disabling ticking leaves no stuck
-      **plugin-owned** glow and does not clear an unrelated deliberate glow.
-- [ ] With Marker + no-tick + small/scale and Invulnerability in combination,
-      editors can still select, edit and restore all toggles.
+- [ ] `asedit.marker` and `asedit.notick` default to `op`. An editor with only
+      `asedit.basic` sees both icons but cannot select either mode, including
+      `/ase mode marker` and `/ase mode notick`; the permission denial is clear.
+- [ ] Grant/revoke each permission at runtime: direct left/right clicks,
+      selected-target Apply/Reverse and typed commands cannot bypass either
+      gate after revocation. No Movement still works under `asedit.basic`.
+- [ ] Paste snapshots containing Marker ON/OFF and No Ticking ON/OFF into
+      destination stands in all four source/destination combinations, first
+      with then without each permission. Unauthorized Paste must not change
+      the protected property, while ordinary properties still paste normally.
+      Verify the two permissions independently, including after revoke.
+- [ ] Confirm GUI slots: Show Arms 14, Visibility 15, Size 16, Scale 17;
+      Invulnerability 23, Lock Equipment 24, Gravity 25, Baseplate 26;
+      Marker 32, No Movement 33, No Ticking 34; Select Target 41, Apply 42,
+      Reverse 43. No missing/overlapping icons; `EXPOSED_COPPER_CHAIN` works.
+- [ ] No Ticking toggles `canTick()` per stand in Creative and Survival,
+      independent of Gravity, No Movement, Marker, Scale and Invulnerability.
+      Untouched stands retain their existing ticking state when plugin enables.
+- [ ] Explicit Ticking ON/OFF survives chunk unload/load and server restart;
+      updating No Movement PDC does not overwrite the Paper ticking override.
+- [ ] Pose/placement/rotation, all six equipment slots in the authorized GUI,
+      copy/paste, targeting and invulnerable-stand left clicks work when no-tick.
+      Confirm client display sync and persistence after a save/restart.
+- [ ] Ordinary ticking stands show the normal brief (~15 tick) selection glow.
+      A stand marked no-tick receives no new editor-applied glow, but can still
+      be selected and edited with the marker-recovery target controls.
+- [ ] Switch ticking OFF while ASE's short glow is active: glow clears rather
+      than becoming stuck. Test a deliberate pre-existing or separately applied
+      Glowing effect: selecting a stand must not overwrite it, and No Ticking
+      must not strip it. Check distinct amplifiers/durations and effect refresh.
+- [ ] Compare burning, status-effect expiry, physics/gravity, collisions,
+      normal/creative damage and interaction on ticking vs non-ticking stands;
+      record behavior differences without assuming optimization is universal.
+- [ ] Test combined Marker + No Ticking + small/0.1-scale, invisible,
+      Invulnerability and Lock Equipment; recover each toggle using Select
+      Target + Apply/Reverse without bypassing protection plugins.
+- [ ] Recheck standard flint permissions, chest/door/button interactions,
+      sneak-scroll/swap, `/ase gui`, Equipment GUI, copy/paste Creative-only
+      equipment guard and Phase 2–5 editing modes.
+- [ ] GitHub Actions Gradle Java 25 build and CodeQL remain green; record Paper
+      build and in-game test results before Phase 6 acceptance.
 
 ## Phase 7 — Native Brigadier commands and tab completion (planned)
 
@@ -386,4 +416,5 @@ build was not independently recorded. Full regression remains a Phase 7 gate.
 | October 31, 2026 / Phase 3 acceptance | CI and CodeQL green; Paper 26.3 in-game checks (operator reported) | PASS (10 targeted groups) | Scale bounds, directions, copy/paste and modifiers, invulnerability persistence/creative-mode editing, permissions and regions, legacy interactions and fallback language all passed. |
 | October 31, 2026 / Phase 4 prepared | Static source review; Gradle unavailable offline (Java 21 installed) | PENDING | Equipment locks, safe live Equipment GUI preview and grouped property layout prepared; CI/CodeQL and live acceptance required. |
 | October 31, 2026 / Phase 4 closeout | CI/CodeQL (operator confirmed), Paper 26.3 live | PASS (targeted) | Lock matrix and equipment paste across Creative/Survival passed; no additional regressions observed. Hard-crash atomicity and separately unchecked extraordinary scenarios remain final regression gates. |
-| October 31, 2026 / Phase 5 prepared | Offline source review and structural checks; Java 25 Gradle unavailable locally | PENDING | Marker/No Movement, sight-line target selection and GUI apply controls; Paper behavior requires CI and live validation. |
+| October 31, 2026 / Phase 5 acceptance | Paper 26.3 live testing (operator reported) | PASS (targeted) | Marker recovery and all Phase 5 checks passed with no new regressions; CHAIN icon corrected to EXPOSED_COPPER_CHAIN in supplied baseline. |
+| October 31, 2026 / Phase 6 prepared | Local source/static review; Java 25 Gradle unavailable here | PENDING | Restricted Marker/No Ticking, glow handling, per-stand tick state, copy/paste and higher GUI layout; CI and Paper/spark testing required. |
