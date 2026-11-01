@@ -200,11 +200,12 @@ unverified compatibility edge, not a claim of universal protection support.
       English fallback still behave as established in Phase 2.
 ## Phase 4 — equipment locks and GUI safety (accepted 2026-10-31)
 
-- [x] Lock Equipment displays as a Trial Key immediately after Invulnerability,
-      followed by Gravity and Baseplate; the GUI icon is visible to basic-only
-      editors, but selecting it (or `/ase mode lockequipment`) requires
-      `asedit.lockequipment`, including with mixed-case commands.
-      `asedit.basic` remains required. Old `disableslots` mode is unavailable.
+- [x] At Phase 4 acceptance, Lock Equipment displayed as a Trial Key immediately
+      after Invulnerability and was visible to basic-only editors, but selecting
+      it required `asedit.lockequipment`. **This earlier icon-visibility choice
+      was superseded by the 2026-11-01 release-candidate hardening below:**
+      restricted icons are now hidden when not permitted. `asedit.basic`
+      remains required. Old `disableslots` mode is unavailable.
 - [x] Lock all six slots (helmet, chest, leggings, boots, main hand, offhand):
       normal survival/creative interactions cannot add, remove or swap items,
       even for a builder; toggle off restores normal vanilla manipulation.
@@ -429,6 +430,45 @@ results are claimed here; keep the Phase 7 sign-off unchecked until retested.
       15× stand upper-body equipment reach, region protections, Marker recovery,
       per-stand No Ticking and legacy unprivileged flint interactions.
 
+## 2026-11-01 permission / GUI follow-up (implementation complete; live test pending)
+
+A reported permission regression involved a basic-only editor selecting a Marker
+stand, attempting the forbidden Marker mode and clicking Apply to Target. The
+mode command already denied selection and the toggle/paste methods had their
+own restricted-property checks; the complete live reproduction remains
+unverified against this source. Release-candidate hardening additionally
+checks the active mode at the edit entry points and clears a stale mode after
+any forbidden command selection. Four restricted icons are hidden on menu
+refresh; server-side authorization is still mandatory.
+
+- [ ] With **only** `asedit.basic` (non-op), open `/ase gui` and the flint air
+      menu: slots 15 (Invisible), 24 (Lock Equipment), 32 (Marker) and 34 (No
+      Ticking) are blank. Nonrestricted properties (Size, Scale, No Movement,
+      Invulnerability, Equipment, Copy/Paste) remain visible and usable.
+- [ ] Grant/revoke **each** restricted node independently. Reopening the GUI
+      reveals/hides **only** its corresponding icon. No logout or restart
+      should be necessary; direct `/ase mode <restricted>` and tab suggestions
+      follow the same current permissions. The name-tag permission has no
+      corresponding main-GUI icon.
+- [ ] With basic-only, select a valid mode, then manually type a **denied**
+      `/ase mode marker` (and repeat for invisible, lockequipment, notick).
+      Verify that denial is shown and the old mode is cleared: **Apply to Target**
+      and **Reverse on Target** must not modify the selected armor stand.
+- [ ] With Marker permission temporarily granted, select Marker and target a
+      stand; then revoke Marker without changing modes. Check **Apply**, **Reverse**,
+      left-click flint and right-click flint. All must leave Marker unchanged
+      and show denial. Repeat this mid-session revocation for Invisible,
+      Lock Equipment, and No Ticking. Regrant, select the mode again and verify
+      authorized editing works in both directions.
+- [ ] Copy a stand with all four restricted properties ON. As a basic-only
+      editor, paste to a destination with distinct state and verify Invisible,
+      Marker, Lock Equipment and No Ticking stay **unchanged** while permitted
+      attributes still paste. Grant each node independently and confirm its
+      property can then paste. Preserve Creative-only gear-paste rules.
+- [ ] Repeat GUI Apply/Reverse with region-protection denial and with
+      `asedit.basic` revoked after the menu is opened. Neither restricted
+      edits nor ordinary edits may bypass the existing protection checks.
+
 ## Final Phase 7 in-game release-candidate regression (ALL UNCHECKED)
 
 Run on a disposable Paper **26.3 / Java 25** test server with the candidate
@@ -470,10 +510,11 @@ and an unprivileged player. Preserve the production JAR as rollback.
       open menus or edit armor stands; check denial/unknown-syntax responses.
 - [ ] Grant `asedit.basic` but deny each of `asedit.invisible`,
       `asedit.lockequipment`, `asedit.marker`, `asedit.notick` independently;
-      check suggestion omission, direct lowercase command denial, GUI
-      icon denial (where displayed), and paste permission isolation. Regrant
-      in session, refresh the command tree as needed, and check changes take
-      effect without logging out. Test revoked `asedit.basic` after GUI opened.
+      check suggestion omission, direct lowercase command denial, GUI icon
+      **hiding** (reopen GUI), denied Apply/Reverse behavior and paste permission
+      isolation. Regrant in session, refresh the command tree as needed, and
+      check changes take effect without logging out. Test revoked `asedit.basic`
+      after GUI opened.
 - [ ] Restart and perform a supported command-tree refresh to confirm `/ase`
       remains single and suggestions still function; check any command aliases
       or name collisions with other plugins installed on BadWolfMC.

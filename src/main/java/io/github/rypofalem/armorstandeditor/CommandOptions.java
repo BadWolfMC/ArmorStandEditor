@@ -12,6 +12,7 @@ package io.github.rypofalem.armorstandeditor;
 import io.github.rypofalem.armorstandeditor.modes.AdjustmentMode;
 import io.github.rypofalem.armorstandeditor.modes.Axis;
 import io.github.rypofalem.armorstandeditor.modes.EditMode;
+import io.github.rypofalem.armorstandeditor.modes.ModePermissions;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -31,18 +32,11 @@ final class CommandOptions {
     }
 
     static String permissionFor(EditMode mode) {
-        return switch (mode) {
-            case INVISIBLE -> "asedit.invisible";
-            case LOCKEQUIPMENT -> "asedit.lockequipment";
-            case MARKER -> "asedit.marker";
-            case NOTICK -> "asedit.notick";
-            default -> null;
-        };
+        return ModePermissions.requiredPermission(mode);
     }
 
     static boolean permitted(EditMode mode, Predicate<String> hasPermission) {
-        String permission = permissionFor(mode);
-        return permission == null || hasPermission.test(permission);
+        return ModePermissions.permitted(mode, hasPermission);
     }
 
     static List<String> modes(Predicate<String> hasPermission) {

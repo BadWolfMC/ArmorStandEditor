@@ -29,6 +29,7 @@ import io.github.rypofalem.armorstandeditor.modes.EditMode;
 import io.github.rypofalem.armorstandeditor.modes.EquipmentLocks;
 import io.github.rypofalem.armorstandeditor.modes.ScaleAdjustment;
 import io.github.rypofalem.armorstandeditor.modes.MovementControl;
+import io.github.rypofalem.armorstandeditor.modes.ModePermissions;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -74,8 +75,34 @@ public class PlayerEditor {
   }
 
   public void setMode(EditMode editMode) {
+    // Internal callers must not bypass the command's mode-specific permission check.
+    if (!requireModePermission(editMode)) {
+      clearMode();
+      return;
+    }
     this.eMode = editMode;
     sendMessage("setmode", editMode.toString().toLowerCase());
+  }
+
+  /** A rejected mode selection must not leave a previously active mode armed. */
+  void clearMode() {
+    this.eMode = EditMode.NONE;
+  }
+
+  private boolean requireModePermission(EditMode mode) {
+    Player player = getPlayer();
+    if (player == null || !player.hasPermission("asedit.basic")) return false;
+    if (!ModePermissions.permitted(mode, player::hasPermission)) {
+      sendMessage("noperm", "warn", null);
+      return false;
+    }
+    return true;
+  }
+
+  // Permissions can be revoked while the menu is open or after selecting a mode.
+  // Both direct flint edits and GUI target actions must revalidate on use.
+  boolean requireCurrentModePermission() {
+    return requireModePermission(eMode);
   }
 
   public void setAxis(Axis axis) {
@@ -102,7 +129,7 @@ public class PlayerEditor {
   }
 
   public void editArmorStand(ArmorStand armorStand) {
-    if (!getPlayer().hasPermission("asedit.basic")) return;
+    if (!requireCurrentModePermission()) return;
     armorStand = attemptTarget(armorStand);
     switch (eMode) {
     case LEFTARM:
@@ -194,7 +221,7 @@ public class PlayerEditor {
   }
 
   public void reverseEditArmorStand(ArmorStand armorStand) {
-    if (!getPlayer().hasPermission("asedit.basic")) return;
+    if (!requireCurrentModePermission()) return;
     armorStand = attemptTarget(armorStand);
     switch (eMode) {
     case LEFTARM:
@@ -295,7 +322,7 @@ public class PlayerEditor {
     armorStand.setBasePlate(data.basePlate);
     armorStand.setArms(data.showArms);
     // BadWolfMC 2026-11-01: paste must respect the same permission as Invisible mode.
-    if (getPlayer().hasPermission("asedit.invisible")) {
+    if (ModePermissions.permitted(EditMode.INVISIBLE, getPlayer()::hasPermission)) {
       armorStand.setVisible(data.visible);
     }
     // Copy only the base scale; keep destination-specific attribute modifiers.
@@ -303,11 +330,12 @@ public class PlayerEditor {
     if (scale != null && data.scale != null) scale.setBaseValue(ScaleAdjustment.clamp(data.scale));
     armorStand.setInvulnerable(data.invulnerable);
     // Powerful entity states require their own permissions even when pasted.
-    if (getPlayer().hasPermission("asedit.marker")) {
+    if (ModePermissions.permitted(EditMode.MARKER, getPlayer()::hasPermission)) {
       armorStand.setMarker(data.marker);
     }
     MovementControl.setCanMove(armorStand, data.canMove, plugin.getMovementKey());
-    if (getPlayer().hasPermission("asedit.notick") && armorStand.canTick() != data.canTick) {
+    if (ModePermissions.permitted(EditMode.NOTICK, getPlayer()::hasPermission) &&
+        armorStand.canTick() != data.canTick) {
       setTicking(armorStand, data.canTick);
     }
     // Equipment duplication has historically been Creative-only. Keep this
@@ -323,7 +351,7 @@ public class PlayerEditor {
     // Restore lock state only after updating the gear, so a destination's
     // previous/new restrictions cannot interfere with equipment application.
     // The lock mode has its own permission; paste must not bypass it.
-    if (getPlayer().hasPermission("asedit.lockequipment")) {
+    if (ModePermissions.permitted(EditMode.LOCKEQUIPMENT, getPlayer()::hasPermission)) {
       EquipmentLocks.restore(armorStand, data.equipmentLocks);
     }
     sendMessage("pasted", "" + (copySlots.currentSlot + 1));
@@ -333,7 +361,7 @@ public class PlayerEditor {
   }
 
   private void toggleLockEquipment(ArmorStand armorStand) {
-    if (!getPlayer().hasPermission("asedit.lockequipment")) return;
+    if (!ModePermissions.permitted(EditMode.LOCKEQUIPMENT, getPlayer()::hasPermission)) return;
     boolean locked = !EquipmentLocks.isFullyLocked(armorStand);
     EquipmentLocks.setFullyLocked(armorStand, locked);
     sendMessage("setlockequipment", locked ? "on" : "off");
@@ -356,13 +384,13 @@ public class PlayerEditor {
   }
 
   private void toggleMarker(ArmorStand armorStand) {
-    if (!getPlayer().hasPermission("asedit.marker")) return;
+    if (!ModePermissions.permitted(EditMode.MARKER, getPlayer()::hasPermission)) return;
     armorStand.setMarker(!armorStand.isMarker());
     sendMessage("setmarker", armorStand.isMarker() ? "on" : "off");
   }
 
   private void toggleNoTick(ArmorStand armorStand) {
-    if (!getPlayer().hasPermission("asedit.notick")) return;
+    if (!ModePermissions.permitted(EditMode.NOTICK, getPlayer()::hasPermission)) return;
     setTicking(armorStand, !armorStand.canTick());
     sendMessage("setnotick", armorStand.canTick() ? "off" : "on");
   }
@@ -393,7 +421,7 @@ public class PlayerEditor {
   }
 
   void toggleVisible(ArmorStand armorStand) {
-    if (!getPlayer().hasPermission("asedit.invisible")) return;
+    if (!ModePermissions.permitted(EditMode.INVISIBLE, getPlayer()::hasPermission)) return;
     armorStand.setVisible(!armorStand.isVisible());
   }
 

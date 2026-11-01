@@ -129,9 +129,11 @@ public final class CommandEx {
         if (player == null) return Command.SINGLE_SUCCESS;
         EditMode mode = CommandOptions.matchingEnum(EditMode.class, value(context));
         if (mode == null) player.sendMessage(modeUsage(player));
-        else if (!CommandOptions.permitted(mode, player::hasPermission))
+        else if (!CommandOptions.permitted(mode, player::hasPermission)) {
+            // A rejected GUI icon must not leave a stale mode active for Apply/Reverse.
+            plugin.editorManager.getPlayerEditor(player.getUniqueId()).clearMode();
             player.sendMessage(Language.component(plugin.getLang().getMessage("noperm", "warn")));
-        else plugin.editorManager.getPlayerEditor(player.getUniqueId()).setMode(mode);
+        } else plugin.editorManager.getPlayerEditor(player.getUniqueId()).setMode(mode);
         return Command.SINGLE_SUCCESS;
     }
 

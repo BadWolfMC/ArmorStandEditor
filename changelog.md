@@ -15,6 +15,7 @@ This release preserves the original editing workflow while modernizing the build
 - Improved target selection for overlapping, scaled, invisible and hitbox-less stands. Physical clicks apply to the clicked stand except when deliberately cycling nearly co-located stands.
 - Extended copy/paste snapshots to include Scale, Invulnerability, Marker, movement, ticking and managed equipment-lock state. Kept **Creative-only equipment paste** as the intentional item-duplication safeguard.
 - Enforced separate permissions for Invisible, Lock Equipment, Marker and No Ticking, including during **paste**. Visibility paste now leaves the destination unchanged without `asedit.invisible`.
+- Release-candidate permission hardening: hide all four restricted mode icons when unavailable, share their authorization policy across commands/GUI/paste, recheck the active mode when applying or reversing edits, and clear the previous mode following denied selection.
 - Preserved ordinary flint use for players without editor permission, and ordinary block interactions and unrelated attacks for authorized editors. Retained region-protection checks for stand edits.
 - Added `/ase gui` for opening the editor without using the tool, including in tight spaces.
 

@@ -21,6 +21,8 @@ package io.github.rypofalem.armorstandeditor.menu;
 
 import io.github.rypofalem.armorstandeditor.ArmorStandEditorPlugin;
 import io.github.rypofalem.armorstandeditor.PlayerEditor;
+import io.github.rypofalem.armorstandeditor.modes.EditMode;
+import io.github.rypofalem.armorstandeditor.modes.ModePermissions;
 import io.github.rypofalem.armorstandeditor.language.Language;
 import java.util.ArrayList;
 import net.kyori.adventure.text.Component;
@@ -95,7 +97,7 @@ public class Menu {
     showArms = createIcon(new ItemStack(Material.STICK),
       "showarms", "mode showarms");
 
-    if (pe.getPlayer().hasPermission("asedit.invisible")) {
+    if (ModePermissions.permitted(EditMode.INVISIBLE, pe.getPlayer()::hasPermission)) {
       visibility = new ItemStack(Material.POTION, 1);
       PotionMeta potionMeta = (PotionMeta) visibility.getItemMeta();
       PotionEffect eff1 = new PotionEffect(PotionEffectType.INVISIBILITY, 1, 0);
@@ -113,15 +115,15 @@ public class Menu {
     invulnerable = createIcon(new ItemStack(Material.TOTEM_OF_UNDYING),
       "invulnerable", "mode invulnerable");
 
-    // Always show the property in the menu. The native /ase command independently enforces
-    // asedit.lockequipment when the icon is selected; hiding the icon made it
-    // look as though the feature had never been added for basic-only editors.
-    lockEquipment = createIcon(new ItemStack(Material.TRIAL_KEY),
+    // Do not advertise restricted modes to players who cannot use them.
+    // This is presentation only; command and edit execution also enforce the policy.
+    lockEquipment = restrictedIcon(EditMode.LOCKEQUIPMENT, Material.TRIAL_KEY,
       "lockequipment", "mode lockequipment");
-
-    marker = createIcon(new ItemStack(Material.ARMOR_STAND), "marker", "mode marker");
+    marker = restrictedIcon(EditMode.MARKER, Material.ARMOR_STAND,
+      "marker", "mode marker");
     noMovement = createIcon(new ItemStack(Material.EXPOSED_COPPER_CHAIN), "nomovement", "mode nomovement");
-    noTick = createIcon(new ItemStack(Material.CLOCK), "notick", "mode notick");
+    noTick = restrictedIcon(EditMode.NOTICK, Material.CLOCK,
+      "notick", "mode notick");
 
     gravity = createIcon(new ItemStack(Material.SAND), "gravity", "mode gravity");
 
@@ -204,6 +206,12 @@ public class Menu {
     items[43] = reverseTarget;
     items[53] = help;
     menuInv.setContents(items);
+  }
+
+  private ItemStack restrictedIcon(EditMode mode, Material material, String path, String command) {
+    return ModePermissions.permitted(mode, pe.getPlayer()::hasPermission)
+      ? createIcon(new ItemStack(material), path, command)
+      : null;
   }
 
   private ItemStack createIcon(ItemStack icon, String path, String command) {

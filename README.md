@@ -64,7 +64,7 @@ All declared permission nodes default to **`op`**. Grant `asedit.basic` to playe
 | `asedit.notick` | Toggling No Ticking and applying copied ticking state. |
 | `asedit.rename` | Enhanced name-tag renaming (also requires `asedit.basic`). |
 
-Other modes, including Scale, Invulnerability and No Movement, use `asedit.basic`. Permissions are rechecked during editing, not only when selecting commands or GUI controls. The equipment-lock feature prevents **vanilla** equipment changes, not deliberate changes by other plugins or administrative APIs.
+Other modes, including Scale, Invulnerability and No Movement, use `asedit.basic`. The Invisible, Lock Equipment, Marker and No Ticking icons are hidden if their respective permission is missing; reopening the menu refreshes icon visibility. Permissions are rechecked when applying edits (including GUI Apply/Reverse and flint clicks), not only when selecting commands or GUI controls. Denied mode selection clears the previous editing mode to avoid accidental subsequent edits. The equipment-lock feature prevents **vanilla** equipment changes, not deliberate changes by other plugins or administrative APIs.
 
 ## Installation
 

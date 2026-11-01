@@ -245,6 +245,8 @@ public class PlayerEditorManager implements Listener {
   public void applySelectedTarget(Player player, boolean reverse) {
     if (!player.hasPermission("asedit.basic")) return;
     PlayerEditor editor = getPlayerEditor(player.getUniqueId());
+    // The mode may have been selected before a permission revocation.
+    if (!editor.requireCurrentModePermission()) return;
     ArmorStand selected = editor.selectedTarget();
     if (selected == null || !getTargets(player).contains(selected)) {
       editor.sendMessage("notargetinview", "warn", null);
