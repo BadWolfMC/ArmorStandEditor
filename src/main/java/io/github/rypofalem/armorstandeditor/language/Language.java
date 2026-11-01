@@ -20,13 +20,12 @@
 package io.github.rypofalem.armorstandeditor.language;
 
 import io.github.rypofalem.armorstandeditor.ArmorStandEditorPlugin;
-import org.bukkit.ChatColor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.*;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 public class Language {
@@ -82,15 +81,16 @@ public class Language {
         if (path == null) return "";
         if (option == null) option = "";
 
-        format = getFormat(format);
-        for (int i = 0; i < format.length(); i += 2) { //place formatting symbol before each character
-            format = format.substring(0, i) + ChatColor.COLOR_CHAR + format.substring(i);
+        String formatCodes = getFormat(format);
+        StringBuilder legacyPrefix = new StringBuilder(formatCodes.length() * 2);
+        for (int i = 0; i < formatCodes.length(); i++) {
+            legacyPrefix.append('\u00a7').append(formatCodes.charAt(i));
         }
 
         if (getString(path + "." + option) != null) option = getString(path + "." + option);
         String message = getString(path + ".msg");
         if (message == null) return "";
-        return format + message.replace("<x>", option);
+        return legacyPrefix + message.replace("<x>", option);
     }
 
     public String getMessage(String path, String format) {
@@ -101,34 +101,11 @@ public class Language {
         return getMessage(path, "info");
     }
 
-    public String getRawMessage(String path, String format, String option){
-        String message = ChatColor.stripColor(getMessage(path, format, option));
-        format = getFormat(format);
-        ChatColor color = ChatColor.WHITE;
-        String bold = "" , italic = "" , underlined = "" , obfuscated = "" , strikethrough = "";
-        for(int i = 0; i < format.length(); i++){
-            ChatColor code = ChatColor.getByChar(format.charAt(i));
-            switch(code) {
-                case MAGIC:
-                    obfuscated = ", \"obfuscated\": true";
-                    break;
-                case BOLD:
-                    bold = ", \"bold\": true";
-                    break;
-                case STRIKETHROUGH:
-                    strikethrough = ", \"strikethrough\": true";
-                    break;
-                case UNDERLINE:
-                    underlined = ", \"underlined\": true";
-                    break;
-                case ITALIC:
-                    italic = ", \"italic\": true";
-                    break;
-                default: color = !code.isColor() ? color : code;
-            }
-        }
-        return String.format("{\"text\":\"%s\", \"color\":\"%s\"%s%s%s%s%s}", message, color.name().toLowerCase(),
-            obfuscated, bold, strikethrough, underlined, italic);
+    /** Return the component as valid JSON, including escaped text and formatting.
+     * Kept for compatibility with integrations that use the legacy method name.
+     */
+    public String getRawMessage(String path, String format, String option) {
+        return GsonComponentSerializer.gson().serialize(component(getMessage(path, format, option)));
     }
 
     private String getFormat(String format){

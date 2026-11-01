@@ -23,24 +23,21 @@ import io.github.rypofalem.armorstandeditor.menu.ASEHolder;
 import io.github.rypofalem.armorstandeditor.menu.EquipmentMenu;
 import io.github.rypofalem.armorstandeditor.modes.MovementControl;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.World;
 import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -68,7 +65,6 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
-import static net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText;
 
 //Manages PlayerEditors and Player Events related to editing armorstands
 public class PlayerEditorManager implements Listener {
@@ -152,18 +148,18 @@ public class PlayerEditorManager implements Listener {
         !canEdit(player, as)) return;
 
     ItemStack nameTag = player.getInventory().getItemInMainHand();
-    final String name;
-    if (nameTag.getItemMeta() != null && nameTag.getItemMeta().hasDisplayName()) {
-      name = nameTag.getItemMeta().getDisplayName().replace('&', ChatColor.COLOR_CHAR);
-    } else {
-      name = null;
-    }
+    org.bukkit.inventory.meta.ItemMeta meta = nameTag.getItemMeta();
+    Component tagName = meta != null ? meta.customName() : null;
+    // Keep historic ampersand formatting for renamed name tags, and preserve
+    // existing legacy-styled names when translating to the entity component API.
+    final String name = tagName == null ? null :
+        LegacyComponentSerializer.legacySection().serialize(tagName).replace('&', '\u00a7');
 
     if (name == null) {
-      as.setCustomName(null);
+      as.customName(null);
       as.setCustomNameVisible(false);
       event.setCancelled(true);
-    } else if (!name.equals("")) { // nametag is not blank
+    } else if (!name.isEmpty()) { // nametag is not blank
       event.setCancelled(true);
 
       if (player.getGameMode() != GameMode.CREATIVE) {
@@ -178,7 +174,7 @@ public class PlayerEditorManager implements Listener {
       // Minecraft may overwrite the name even if this event is cancelled.
       Bukkit.getScheduler().runTaskLater(plugin, () -> {
         if (!as.isValid()) return; // Stand may be removed/unloaded before the next tick.
-        as.setCustomName(name);
+        as.customName(LegacyComponentSerializer.legacySection().deserialize(name));
         as.setCustomNameVisible(true);
       }, 1);
     }

@@ -23,6 +23,10 @@ import io.github.rypofalem.armorstandeditor.language.Language;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -121,12 +125,23 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
   public boolean isEditTool(ItemStack item) {
     if (item == null) return false;
     if (editTool != item.getType()) return false;
-    if (requireToolData && item.getDurability() != (short) editToolData) return false;
+    // The old item data byte was replaced by item metadata in modern Minecraft.
+    // Damageable materials expose their wear through ItemMeta; other materials
+    // (including the default FLINT) have a damage value of zero.
+    ItemMeta meta = null;
+    if (requireToolData || (requireToolLore && editToolLore != null)) {
+      meta = item.getItemMeta();
+    }
+    if (requireToolData) {
+      int damage = meta instanceof Damageable damageable ? damageable.getDamage() : 0;
+      if (damage != editToolData) return false;
+    }
     if (requireToolLore && editToolLore != null) {
-      if (!item.hasItemMeta()) return false;
-      if (!item.getItemMeta().hasLore()) return false;
-      if (item.getItemMeta().getLore().isEmpty()) return false;
-      if (!item.getItemMeta().getLore().get(0).equals(editToolLore)) return false;
+      if (meta == null) return false;
+      java.util.List<Component> lore = meta.lore();
+      if (lore == null || lore.isEmpty()) return false;
+      // Preserve the configured first-line comparison, including section codes.
+      if (!LegacyComponentSerializer.legacySection().serialize(lore.get(0)).equals(editToolLore)) return false;
     }
     return true;
   }

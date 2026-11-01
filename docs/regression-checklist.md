@@ -530,6 +530,16 @@ and an unprivileged player. Preserve the production JAR as rollback.
       Marker, No Movement and No Ticking. Repeat with basic-only permissions
       to ensure restricted state is neither copied into the destination nor
       accidentally cleared. Retest restart persistence.
+- [ ] **Invisible paste permission:** Using a non-op editor with `asedit.basic`
+      but without `asedit.invisible`, copy a visible stand and paste onto an
+      invisible stand, then copy an invisible stand and paste onto a visible
+      stand. The destination must retain its original visibility in both cases
+      while other permitted snapshot properties still apply. Grant
+      `asedit.invisible` and repeat both directions; visibility must then paste
+      normally. Revoke the permission again without restarting and repeat.
+      Verify direct `/ase mode invisible` denial and normal visibility editing
+      after regranting permission. Test both Creative and Survival, retaining
+      the existing Creative-only equipment-paste rule.
 - [ ] Change language from English to another shipped locale and confirm
       English fallback for new strings and icons; no null/missing text.
 
@@ -604,3 +614,21 @@ build was not independently recorded. Full regression remains a Phase 7 gate.
 | October 31, 2026 / Phase 4 closeout | CI/CodeQL (operator confirmed), Paper 26.3 live | PASS (targeted) | Lock matrix and equipment paste across Creative/Survival passed; no additional regressions observed. Hard-crash atomicity and separately unchecked extraordinary scenarios remain final regression gates. |
 | October 31, 2026 / Phase 5 acceptance | Paper 26.3 live testing (operator reported) | PASS (targeted) | Marker recovery and all Phase 5 checks passed with no new regressions; CHAIN icon corrected to EXPOSED_COPPER_CHAIN in supplied baseline. |
 | October 31, 2026 / Phase 6 accepted | Paper 26.3 live testing and Gradle CI/CodeQL (operator-reported) | PASS (targeted) | Restricted Marker/No Ticking, per-stand restart persistence, target isolation, glow, copy/paste and legacy behavior passed. 50-stand spark export suggests lower process CPU but nearly unchanged MSPT; not a controlled performance guarantee. Full Phase 7 regression remains outstanding. |
+
+## Final API/Adventure cleanup regression checks (1.0.0 candidate)
+
+- [ ] Main GUI and Equipment GUI icons show their localized custom names and
+      description lore on hover; no unwanted potion effects, enchanted-book
+      enchantments, attack attributes or other vanilla component details appear.
+- [ ] `/ase`, `/ase help`, invalid command feedback and mode permission errors
+      show translated colors/formatting consistently in chat and action bar.
+- [ ] An anvil-renamed name tag containing `&6`, `&l`, or plain text applies
+      the expected stand name; creative and survival consumption remain unchanged.
+- [ ] With `requireToolData` enabled, zero-damage and worn damageable items
+      match the configured `toolData` correctly; default FLINT still works
+      with the setting disabled.
+- [ ] With `requireToolLore` enabled, a tool with the exact configured first
+      lore line works while missing, empty, differently styled, or mismatched
+      lore fails; verify unchanged vanilla flint for non-editors.
+- [ ] Localized inventory titles appear correctly; existing lang/*.yml remain
+      unchanged and missing custom locale falls back to English.

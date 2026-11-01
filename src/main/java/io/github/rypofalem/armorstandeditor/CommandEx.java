@@ -17,11 +17,13 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.rypofalem.armorstandeditor.modes.AdjustmentMode;
 import io.github.rypofalem.armorstandeditor.modes.Axis;
 import io.github.rypofalem.armorstandeditor.modes.EditMode;
+import io.github.rypofalem.armorstandeditor.language.Language;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Sound;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -82,7 +84,7 @@ public final class CommandEx {
     private Player authorizedPlayer(CommandContext<CommandSourceStack> context) {
         CommandSender sender = context.getSource().getSender();
         if (!(sender instanceof Player player) || !player.hasPermission("asedit.basic")) {
-            sender.sendMessage(plugin.getLang().getMessage("noperm", "warn"));
+            sender.sendMessage(Language.component(plugin.getLang().getMessage("noperm", "warn")));
             return null;
         }
         return player;
@@ -128,7 +130,7 @@ public final class CommandEx {
         EditMode mode = CommandOptions.matchingEnum(EditMode.class, value(context));
         if (mode == null) player.sendMessage(modeUsage(player));
         else if (!CommandOptions.permitted(mode, player::hasPermission))
-            player.sendMessage(plugin.getLang().getMessage("noperm", "warn"));
+            player.sendMessage(Language.component(plugin.getLang().getMessage("noperm", "warn")));
         else plugin.editorManager.getPlayerEditor(player.getUniqueId()).setMode(mode);
         return Command.SINGLE_SUCCESS;
     }
@@ -165,41 +167,41 @@ public final class CommandEx {
         return Command.SINGLE_SUCCESS;
     }
 
-    private int missingValue(CommandContext<CommandSourceStack> context, String key, String usage) {
+    private int missingValue(CommandContext<CommandSourceStack> context, String key, Component usage) {
         Player player = authorizedPlayer(context);
         if (player != null) {
-            player.sendMessage(plugin.getLang().getMessage(key, "warn"));
+            player.sendMessage(Language.component(plugin.getLang().getMessage(key, "warn")));
             player.sendMessage(usage);
         }
         return Command.SINGLE_SUCCESS;
     }
 
-    private String modeUsage(Player player) {
+    private Component modeUsage(Player player) {
         List<String> modes = player != null ? CommandOptions.modes(player::hasPermission) : List.of();
-        return ChatColor.GREEN + "/ase mode <" + String.join(" | ", modes) + ">";
+        return Component.text("/ase mode <" + String.join(" | ", modes) + ">", NamedTextColor.GREEN);
     }
 
-    private static String axisUsage() { return ChatColor.GREEN + "/ase axis <x|y|z>"; }
-    private static String adjUsage() { return ChatColor.GREEN + "/ase adj <coarse|fine>"; }
-    private static String slotUsage() { return ChatColor.GREEN + "/ase slot <1-9>"; }
+    private static Component axisUsage() { return Component.text("/ase axis <x|y|z>", NamedTextColor.GREEN); }
+    private static Component adjUsage() { return Component.text("/ase adj <coarse|fine>", NamedTextColor.GREEN); }
+    private static Component slotUsage() { return Component.text("/ase slot <1-9>", NamedTextColor.GREEN); }
 
     private void showUsage(Player player, boolean includeHelp) {
         player.sendMessage(modeUsage(player));
         player.sendMessage(axisUsage());
         player.sendMessage(slotUsage());
         player.sendMessage(adjUsage());
-        if (includeHelp) player.sendMessage(ChatColor.GREEN + "/ase help");
-        player.sendMessage(ChatColor.GREEN + "/ase gui");
+        if (includeHelp) player.sendMessage(Component.text("/ase help", NamedTextColor.GREEN));
+        player.sendMessage(Component.text("/ase gui", NamedTextColor.GREEN));
     }
 
     private void showHelp(Player player) {
         player.closeInventory();
         player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
-        player.sendMessage(plugin.getLang().getMessage("help", "info", plugin.editTool.name()));
+        player.sendMessage(Language.component(plugin.getLang().getMessage("help", "info", plugin.editTool.name())));
         player.sendMessage("");
-        player.sendMessage(plugin.getLang().getMessage("helptips", "info"));
+        player.sendMessage(Language.component(plugin.getLang().getMessage("helptips", "info")));
         player.sendMessage("");
-        player.sendMessage(plugin.getLang().getMessage("helpurl", ""));
-        player.sendMessage(ChatColor.GREEN + "/ase gui");
+        player.sendMessage(Language.component(plugin.getLang().getMessage("helpurl", "")));
+        player.sendMessage(Component.text("/ase gui", NamedTextColor.GREEN));
     }
 }

@@ -33,9 +33,7 @@ import io.github.rypofalem.armorstandeditor.modes.MovementControl;
 import java.util.ArrayList;
 import java.util.UUID;
 
-import net.md_5.bungee.api.ChatMessageType;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -296,7 +294,10 @@ public class PlayerEditor {
     armorStand.setGravity(data.gravity);
     armorStand.setBasePlate(data.basePlate);
     armorStand.setArms(data.showArms);
-    armorStand.setVisible(data.visible);
+    // BadWolfMC 2026-11-01: paste must respect the same permission as Invisible mode.
+    if (getPlayer().hasPermission("asedit.invisible")) {
+      armorStand.setVisible(data.visible);
+    }
     // Copy only the base scale; keep destination-specific attribute modifiers.
     AttributeInstance scale = armorStand.getAttribute(Attribute.SCALE);
     if (scale != null && data.scale != null) scale.setBaseValue(ScaleAdjustment.clamp(data.scale));

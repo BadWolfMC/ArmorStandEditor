@@ -51,7 +51,7 @@ public final class EquipmentMenu {
   private void fillInventory() {
     ItemStack disabled = new ItemStack(Material.BARRIER);
     ItemMeta meta = disabled.getItemMeta();
-    meta.displayName(Language.component(editor.plugin.getLang().getMessage("disabled", "warn")));
+    meta.customName(Language.component(editor.plugin.getLang().getMessage("disabled", "warn")));
     meta.getPersistentDataContainer().set(editor.plugin.getIconKey(), PersistentDataType.STRING, "ase icon");
     disabled.setItemMeta(meta);
 
@@ -74,13 +74,13 @@ public final class EquipmentMenu {
     ItemStack icon = new ItemStack(material);
     ItemMeta meta = icon.getItemMeta();
     meta.getPersistentDataContainer().set(editor.plugin.getIconKey(), PersistentDataType.STRING, "ase icon");
-    meta.displayName(Language.component(editor.plugin.getLang().getMessage("equipslot", "iconname", slot)));
+    meta.customName(Language.component(editor.plugin.getLang().getMessage("equipslot", "iconname", slot)));
     ArrayList<Component> lore = new ArrayList<>();
     lore.add(Language.component(editor.plugin.getLang().getMessage("equipslot.description", "icondescription", slot)));
     meta.lore(lore);
     meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-    meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
     icon.setItemMeta(meta);
+    GuiTooltip.hideVanillaDetails(icon);
     return icon;
   }
 

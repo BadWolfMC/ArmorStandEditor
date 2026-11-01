@@ -24,10 +24,8 @@ import io.github.rypofalem.armorstandeditor.PlayerEditor;
 import io.github.rypofalem.armorstandeditor.language.Language;
 import java.util.ArrayList;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -36,7 +34,6 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public class Menu {
   private Inventory menuInv;
@@ -46,7 +43,7 @@ public class Menu {
   public Menu(PlayerEditor pe) {
     this.pe = pe;
     name = pe.plugin.getLang().getMessage("mainmenutitle", "menutitle");
-    menuInv = Bukkit.createInventory(pe.getManager().getMenuHolder(), 54, name);
+    menuInv = Bukkit.createInventory(pe.getManager().getMenuHolder(), 54, Language.component(name));
     fillInventory();
   }
 
@@ -216,26 +213,18 @@ public class Menu {
   private ItemStack createIcon(ItemStack icon, String path, String command, String option) {
     ItemMeta meta = icon.getItemMeta();
     meta.getPersistentDataContainer().set(ArmorStandEditorPlugin.instance().getIconKey(), PersistentDataType.STRING, "ase " + command);
-    meta.displayName(Language.component(getIconName(path, option)));
+    meta.customName(Language.component(getIconName(path, option)));
     ArrayList < Component > loreList = new ArrayList < > ();
     loreList.add(Language.component(getIconDescription(path, option)));
     meta.lore(loreList);
     meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-    meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
     icon.setItemMeta(meta);
+    GuiTooltip.hideVanillaDetails(icon);
     return icon;
-  }
-
-  private String getIconName(String path) {
-    return getIconName(path, null);
   }
 
   private String getIconName(String path, String option) {
     return pe.plugin.getLang().getMessage(path, "iconname", option);
-  }
-
-  private String getIconDescription(String path) {
-    return getIconDescription(path, null);
   }
 
   private String getIconDescription(String path, String option) {
