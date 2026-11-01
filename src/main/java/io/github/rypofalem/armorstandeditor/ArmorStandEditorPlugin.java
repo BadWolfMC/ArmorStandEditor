@@ -20,22 +20,24 @@
 package io.github.rypofalem.armorstandeditor;
 
 import io.github.rypofalem.armorstandeditor.language.Language;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 
 public class ArmorStandEditorPlugin extends JavaPlugin {
   private NamespacedKey iconKey;
+  private NamespacedKey movementKey;
+  private final HighlightControl highlightControl = new HighlightControl();
   private static ArmorStandEditorPlugin instance;
-  private CommandEx execute;
   private Language lang;
-  public boolean hasSpigot;
   public PlayerEditorManager editorManager;
   public Material editTool = Material.FLINT;
   boolean requireToolData = false;
@@ -68,9 +70,22 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
     lang = new Language(getConfig().getString("lang"), this);
 
     coarseRot = getConfig().getDouble("coarse");
+    if (!ConfigValidation.isUsableRotationDivisor(coarseRot)) {
+      getLogger().warning("Invalid 'coarse' rotation divisor; using default 12.");
+      coarseRot = 12;
+    }
     fineRot = getConfig().getDouble("fine");
+    if (!ConfigValidation.isUsableRotationDivisor(fineRot)) {
+      getLogger().warning("Invalid 'fine' rotation divisor; using default 120.");
+      fineRot = 120;
+    }
     String toolType = getConfig().getString("tool", "FLINT");
-    editTool = Material.getMaterial(toolType);
+    Material configuredTool = toolType == null ? null : Material.getMaterial(toolType);
+    if (configuredTool == null) {
+      getLogger().warning("Invalid 'tool' material '" + toolType + "'; using default FLINT.");
+      configuredTool = Material.FLINT;
+    }
+    editTool = configuredTool;
     requireToolData = getConfig().getBoolean("requireToolData", false);
     if (requireToolData) editToolData = getConfig().getInt("toolData", Integer.MIN_VALUE);
     requireToolLore = getConfig().getBoolean("requireToolLore", false);
@@ -79,40 +94,24 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
     sendToActionBar = getConfig().getBoolean("sendMessagesToActionBar", true);
 
     editorManager = new PlayerEditorManager(this);
-    execute = new CommandEx(this);
-    getCommand("ase").setExecutor(execute);
+    CommandEx commands = new CommandEx(this);
+    // A single lifecycle callback also handles Paper command-tree rebuilds.
+    getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
+        commands.register(event.registrar()));
     getServer().getPluginManager().registerEvents(editorManager, this);
+    editorManager.restoreLoadedMovement();
+  }
 
-    hasSpigot = true;
-    try {
-      Class.forName("org.spigotmc.package-info", false, this.getClassLoader());
-    } catch (ClassNotFoundException e) {
-      hasSpigot = false;
-    }
+  @Override
+  public void onDisable() {
+    if (editorManager != null) editorManager.closeEditorMenus();
+    highlightControl.clearTracking();
   }
 
   private void updateConfig(String folder, String config) {
     if (!new File(getDataFolder() + File.separator + folder + config).exists()) {
       saveResource(folder + config, false);
     }
-  }
-
-  @Override
-  public void onDisable() {
-    for (Player player: Bukkit.getServer().getOnlinePlayers()) {
-      if (player.getOpenInventory().getTopInventory().getHolder() == editorManager.getMenuHolder()) player.closeInventory();
-    }
-  }
-
-  public String listPlugins() {
-    Plugin[] plugins = getServer().getPluginManager().getPlugins();
-    StringBuilder list = new StringBuilder();
-    for (Plugin p: plugins) {
-      if (p != null) {
-        list.append(" :").append(p.getName()).append(" ").append(p.getDescription().getVersion()).append(": ");
-      }
-    }
-    return list.toString();
   }
 
   public static ArmorStandEditorPlugin instance() {
@@ -126,14 +125,34 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
   public boolean isEditTool(ItemStack item) {
     if (item == null) return false;
     if (editTool != item.getType()) return false;
-    if (requireToolData && item.getDurability() != (short) editToolData) return false;
+    // The old item data byte was replaced by item metadata in modern Minecraft.
+    // Damageable materials expose their wear through ItemMeta; other materials
+    // (including the default FLINT) have a damage value of zero.
+    ItemMeta meta = null;
+    if (requireToolData || (requireToolLore && editToolLore != null)) {
+      meta = item.getItemMeta();
+    }
+    if (requireToolData) {
+      int damage = meta instanceof Damageable damageable ? damageable.getDamage() : 0;
+      if (damage != editToolData) return false;
+    }
     if (requireToolLore && editToolLore != null) {
-      if (!item.hasItemMeta()) return false;
-      if (!item.getItemMeta().hasLore()) return false;
-      if (item.getItemMeta().getLore().isEmpty()) return false;
-      if (!item.getItemMeta().getLore().get(0).equals(editToolLore)) return false;
+      if (meta == null) return false;
+      java.util.List<Component> lore = meta.lore();
+      if (lore == null || lore.isEmpty()) return false;
+      // Preserve the configured first-line comparison, including section codes.
+      if (!LegacyComponentSerializer.legacySection().serialize(lore.get(0)).equals(editToolLore)) return false;
     }
     return true;
+  }
+
+  HighlightControl getHighlightControl() {
+    return highlightControl;
+  }
+
+  public NamespacedKey getMovementKey() {
+    if (movementKey == null) movementKey = new NamespacedKey(this, "no_movement");
+    return movementKey;
   }
 
   public NamespacedKey getIconKey() {
@@ -141,6 +160,3 @@ public class ArmorStandEditorPlugin extends JavaPlugin {
     return iconKey;
   }
 }
-//todo: 
-//Access to "DisabledSlots" data (probably simplified just a toggle enable/disable)
-//Access to the "Marker" switch (so you can make the hitbox super small)

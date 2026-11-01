@@ -24,7 +24,12 @@ setmode:
   showarms: Toggle Show Arms
   invisible: Toggle Visibility
   size: Toggle Size
-  disableslots: Toggle Disable Slots
+  scale: Adjust Scale
+  invulnerable: Toggle Invulnerability
+  lockequipment: Toggle Lock Equipment
+  marker: Toggle Marker
+  nomovement: Toggle No Movement
+  notick: Toggle No Ticking
   gravity: Toggle Gravity
   baseplate: Toggle BasePlate
   placement: Placement
@@ -43,16 +48,44 @@ setadj:
   msg: Setting adjustment to <x>.
   coarse: Coarse
   fine: Fine
+setscale:
+  msg: Scale set to <x>x.
+setinvulnerable:
+  msg: Invulnerability turned <x>.
+  on: on
+  off: off
+setlockequipment:
+  msg: Equipment lock turned <x>.
+  on: on
+  off: off
+setmarker:
+  msg: Marker turned <x>.
+  on: on
+  off: off
+setnomovement:
+  msg: No Movement turned <x>.
+  on: on
+  off: off
+setnotick:
+  msg: No Ticking turned <x>.
+  on: on
+  off: off
+notargetinview:
+  msg: Look toward a selected armor stand within 10 blocks first.
 setgravity: 
   msg: Gravity turned <x>.
   on: on
   off: off
+noscaleattribute:
+  msg: This armor stand does not have a scale attribute.
 nomode: 
   msg: Click with the edit tool away from an armorstand to select an editing mode first!
 copied: 
   msg: ArmorStand state copied to slot <x>.
 pasted: 
   msg: ArmorStand state pasted from slot <x>.
+pasteequipmentcreativeonly:
+  msg: Equipment was not pasted (Creative mode only).
 target:
   msg: ArmorStand target locked.
 notarget:
@@ -60,7 +93,7 @@ notarget:
 help:
   msg: "1. Hold the editing tool(<x>) in your main hand
 
-      2. Left or right click away from an armor stand to open menu.
+      2. Left or right click away from an armor stand to open menu, or use /ase gui.
 
       3. Select the labeled menu options.
 
@@ -159,10 +192,42 @@ size:
   msg: Size
   description: 
     msg: Make it big or small
-disableslots: 
-  msg: Disable Slots
-  description: 
-    msg: Enable and disable equipment lock
+scale:
+  msg: Scale
+  description:
+    msg: Left click to grow, right click to shrink
+invulnerable:
+  msg: Invulnerability
+  description:
+    msg: Toggle protection from normal damage
+lockequipment:
+  msg: Lock Equipment
+  description:
+    msg: Block normal gear changes
+marker:
+  msg: Marker
+  description:
+    msg: Toggle the stand's tiny hitbox
+nomovement:
+  msg: No Movement
+  description:
+    msg: Prevent ordinary movement
+notick:
+  msg: No Ticking
+  description:
+    msg: Toggle ticking for this stand
+selecttarget:
+  msg: Select Target
+  description:
+    msg: Find or cycle stands in your sights
+applytarget:
+  msg: Apply to Target
+  description:
+    msg: Apply selected mode (left click)
+reversetarget:
+  msg: Reverse on Target
+  description:
+    msg: Apply reverse (right click)
 gravity: 
   msg: Gravity
   description: 
@@ -206,7 +271,7 @@ disabled:
 equipslot: 
   msg: <x> Slot
   description: 
-    msg: Drag your <x> into the slot below
+    msg: Click below to swap with cursor
     helm: Helmet
     chest: Chestplate
     pants: Pants

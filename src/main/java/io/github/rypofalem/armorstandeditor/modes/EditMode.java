@@ -20,9 +20,9 @@
 package io.github.rypofalem.armorstandeditor.modes;
 
 public enum EditMode {
-	NONE("None"), INVISIBLE("Invisible"), SHOWARMS("ShowArms"), GRAVITY("Gravity"), BASEPLATE("BasePlate"), SIZE("Size"), COPY("Copy"), PASTE("Paste"),
+	NONE("None"), INVISIBLE("Invisible"), SHOWARMS("ShowArms"), GRAVITY("Gravity"), BASEPLATE("BasePlate"), SIZE("Size"), SCALE("Scale"), INVULNERABLE("Invulnerable"), MARKER("Marker"), NOMOVEMENT("NoMovement"), NOTICK("NoTick"), COPY("Copy"), PASTE("Paste"),
 	HEAD("Head"), BODY("Body"), LEFTARM("LeftArm"), RIGHTARM("RightArm"), LEFTLEG("LeftLeg"), RIGHTLEG("RightLeg"),
-	PLACEMENT("Placement"), DISABLESLOTS("DisableSlots"), ROTATE("Rotate"), EQUIPMENT("Equipment"), RESET("Reset");
+	PLACEMENT("Placement"), LOCKEQUIPMENT("LockEquipment"), ROTATE("Rotate"), EQUIPMENT("Equipment"), RESET("Reset");
 	
 	private String name;
 	

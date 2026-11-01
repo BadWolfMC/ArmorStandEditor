@@ -19,28 +19,30 @@
 
 package io.github.rypofalem.armorstandeditor;
 
-import io.github.rypofalem.armorstandeditor.menu.EquipmentMenu;
+import io.github.rypofalem.armorstandeditor.language.Language;
 import io.github.rypofalem.armorstandeditor.menu.Menu;
 import io.github.rypofalem.armorstandeditor.modes.AdjustmentMode;
 import io.github.rypofalem.armorstandeditor.modes.ArmorStandData;
 import io.github.rypofalem.armorstandeditor.modes.Axis;
 import io.github.rypofalem.armorstandeditor.modes.CopySlots;
 import io.github.rypofalem.armorstandeditor.modes.EditMode;
+import io.github.rypofalem.armorstandeditor.modes.EquipmentLocks;
+import io.github.rypofalem.armorstandeditor.modes.ScaleAdjustment;
+import io.github.rypofalem.armorstandeditor.modes.MovementControl;
+import io.github.rypofalem.armorstandeditor.modes.ModePermissions;
 
 import java.util.ArrayList;
 import java.util.UUID;
 
-import net.md_5.bungee.api.ChatMessageType;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
-import static net.kyori.adventure.text.Component.text;
 
 public class PlayerEditor {
   public ArmorStandEditorPlugin plugin;
@@ -56,8 +58,8 @@ public class PlayerEditor {
   ArmorStand target;
   ArrayList < ArmorStand > targetList = null;
   int targetIndex = 0;
-  EquipmentMenu equipMenu;
   long lastCancelled = 0;
+  private BukkitTask pendingMenuTask;
 
   public PlayerEditor(UUID uuid, ArmorStandEditorPlugin plugin) {
     this.uuid = uuid;
@@ -73,8 +75,34 @@ public class PlayerEditor {
   }
 
   public void setMode(EditMode editMode) {
+    // Internal callers must not bypass the command's mode-specific permission check.
+    if (!requireModePermission(editMode)) {
+      clearMode();
+      return;
+    }
     this.eMode = editMode;
     sendMessage("setmode", editMode.toString().toLowerCase());
+  }
+
+  /** A rejected mode selection must not leave a previously active mode armed. */
+  void clearMode() {
+    this.eMode = EditMode.NONE;
+  }
+
+  private boolean requireModePermission(EditMode mode) {
+    Player player = getPlayer();
+    if (player == null || !player.hasPermission("asedit.basic")) return false;
+    if (!ModePermissions.permitted(mode, player::hasPermission)) {
+      sendMessage("noperm", "warn", null);
+      return false;
+    }
+    return true;
+  }
+
+  // Permissions can be revoked while the menu is open or after selecting a mode.
+  // Both direct flint edits and GUI target actions must revalidate on use.
+  boolean requireCurrentModePermission() {
+    return requireModePermission(eMode);
   }
 
   public void setAxis(Axis axis) {
@@ -101,7 +129,7 @@ public class PlayerEditor {
   }
 
   public void editArmorStand(ArmorStand armorStand) {
-    if (!getPlayer().hasPermission("asedit.basic")) return;
+    if (!requireCurrentModePermission()) return;
     armorStand = attemptTarget(armorStand);
     switch (eMode) {
     case LEFTARM:
@@ -128,6 +156,21 @@ public class PlayerEditor {
     case SIZE:
       toggleSize(armorStand);
       break;
+    case SCALE:
+      adjustScale(armorStand, 1);
+      break;
+    case INVULNERABLE:
+      toggleInvulnerable(armorStand);
+      break;
+    case MARKER:
+      toggleMarker(armorStand);
+      break;
+    case NOTICK:
+      toggleNoTick(armorStand);
+      break;
+    case NOMOVEMENT:
+      toggleNoMovement(armorStand);
+      break;
     case INVISIBLE:
       toggleVisible(armorStand);
       break;
@@ -149,8 +192,8 @@ public class PlayerEditor {
     case ROTATE:
       rotate(armorStand);
       break;
-    case DISABLESLOTS:
-      toggleDisableSlots(armorStand);
+    case LOCKEQUIPMENT:
+      toggleLockEquipment(armorStand);
       break;
     case EQUIPMENT:
       openEquipment(armorStand);
@@ -174,12 +217,11 @@ public class PlayerEditor {
   }
 
   private void openEquipment(ArmorStand armorStand) {
-    equipMenu = new EquipmentMenu(this, armorStand);
-    equipMenu.open();
+    getManager().openEquipmentMenu(this, armorStand);
   }
 
   public void reverseEditArmorStand(ArmorStand armorStand) {
-    if (!getPlayer().hasPermission("asedit.basic")) return;
+    if (!requireCurrentModePermission()) return;
     armorStand = attemptTarget(armorStand);
     switch (eMode) {
     case LEFTARM:
@@ -199,6 +241,9 @@ public class PlayerEditor {
       break;
     case RIGHTLEG:
       armorStand.setRightLegPose(addEulerAngle(armorStand.getRightLegPose()));
+      break;
+    case SCALE:
+      adjustScale(armorStand, -1);
       break;
     case PLACEMENT:
       reverseMove(armorStand);
@@ -276,20 +321,89 @@ public class PlayerEditor {
     armorStand.setGravity(data.gravity);
     armorStand.setBasePlate(data.basePlate);
     armorStand.setArms(data.showArms);
-    armorStand.setVisible(data.visible);
-    if (this.getPlayer().getGameMode() == GameMode.CREATIVE) {
-      armorStand.getEquipment().setHelmet(data.head);
-      armorStand.getEquipment().setChestplate(data.body);
-      armorStand.getEquipment().setLeggings(data.legs);
-      armorStand.getEquipment().setBoots(data.feetsies);
-      armorStand.getEquipment().setItemInMainHand(data.rightHand);
-      armorStand.getEquipment().setItemInOffHand(data.leftHand);
+    // BadWolfMC 2026-11-01: paste must respect the same permission as Invisible mode.
+    if (ModePermissions.permitted(EditMode.INVISIBLE, getPlayer()::hasPermission)) {
+      armorStand.setVisible(data.visible);
+    }
+    // Copy only the base scale; keep destination-specific attribute modifiers.
+    AttributeInstance scale = armorStand.getAttribute(Attribute.SCALE);
+    if (scale != null && data.scale != null) scale.setBaseValue(ScaleAdjustment.clamp(data.scale));
+    armorStand.setInvulnerable(data.invulnerable);
+    // Powerful entity states require their own permissions even when pasted.
+    if (ModePermissions.permitted(EditMode.MARKER, getPlayer()::hasPermission)) {
+      armorStand.setMarker(data.marker);
+    }
+    MovementControl.setCanMove(armorStand, data.canMove, plugin.getMovementKey());
+    if (ModePermissions.permitted(EditMode.NOTICK, getPlayer()::hasPermission) &&
+        armorStand.canTick() != data.canTick) {
+      setTicking(armorStand, data.canTick);
+    }
+    // Equipment duplication has historically been Creative-only. Keep this
+    // guard: allowing Survival pastes would create items from snapshots.
+    if (getPlayer().getGameMode() == GameMode.CREATIVE) {
+      armorStand.getEquipment().setHelmet(data.head.clone());
+      armorStand.getEquipment().setChestplate(data.body.clone());
+      armorStand.getEquipment().setLeggings(data.legs.clone());
+      armorStand.getEquipment().setBoots(data.feetsies.clone());
+      armorStand.getEquipment().setItemInMainHand(data.rightHand.clone());
+      armorStand.getEquipment().setItemInOffHand(data.leftHand.clone());
+    }
+    // Restore lock state only after updating the gear, so a destination's
+    // previous/new restrictions cannot interfere with equipment application.
+    // The lock mode has its own permission; paste must not bypass it.
+    if (ModePermissions.permitted(EditMode.LOCKEQUIPMENT, getPlayer()::hasPermission)) {
+      EquipmentLocks.restore(armorStand, data.equipmentLocks);
     }
     sendMessage("pasted", "" + (copySlots.currentSlot + 1));
+    if (getPlayer().getGameMode() != GameMode.CREATIVE) {
+      sendMessage("pasteequipmentcreativeonly", "warn", null);
+    }
   }
 
-  private void toggleDisableSlots(ArmorStand armorStand) {
-    //TODO
+  private void toggleLockEquipment(ArmorStand armorStand) {
+    if (!ModePermissions.permitted(EditMode.LOCKEQUIPMENT, getPlayer()::hasPermission)) return;
+    boolean locked = !EquipmentLocks.isFullyLocked(armorStand);
+    EquipmentLocks.setFullyLocked(armorStand, locked);
+    sendMessage("setlockequipment", locked ? "on" : "off");
+  }
+
+  private void adjustScale(ArmorStand armorStand, int direction) {
+    AttributeInstance scale = armorStand.getAttribute(Attribute.SCALE);
+    if (scale == null) {
+      sendMessage("noscaleattribute", "warn", null);
+      return;
+    }
+    double next = ScaleAdjustment.adjust(scale.getBaseValue(), direction, adjMode);
+    scale.setBaseValue(next);
+    sendMessage("setscale", String.format(java.util.Locale.ROOT, "%.1f", next));
+  }
+
+  private void toggleInvulnerable(ArmorStand armorStand) {
+    armorStand.setInvulnerable(!armorStand.isMarkedInvulnerable());
+    sendMessage("setinvulnerable", armorStand.isMarkedInvulnerable() ? "on" : "off");
+  }
+
+  private void toggleMarker(ArmorStand armorStand) {
+    if (!ModePermissions.permitted(EditMode.MARKER, getPlayer()::hasPermission)) return;
+    armorStand.setMarker(!armorStand.isMarker());
+    sendMessage("setmarker", armorStand.isMarker() ? "on" : "off");
+  }
+
+  private void toggleNoTick(ArmorStand armorStand) {
+    if (!ModePermissions.permitted(EditMode.NOTICK, getPlayer()::hasPermission)) return;
+    setTicking(armorStand, !armorStand.canTick());
+    sendMessage("setnotick", armorStand.canTick() ? "off" : "on");
+  }
+
+  private void setTicking(ArmorStand armorStand, boolean canTick) {
+    if (!canTick) plugin.getHighlightControl().clearOwnedGlow(armorStand);
+    armorStand.setCanTick(canTick);
+  }
+
+  private void toggleNoMovement(ArmorStand armorStand) {
+    boolean wasMovable = armorStand.canMove();
+    MovementControl.setCanMove(armorStand, !wasMovable, plugin.getMovementKey());
+    sendMessage("setnomovement", wasMovable ? "on" : "off");
   }
 
   private void toggleGravity(ArmorStand armorStand) {
@@ -307,7 +421,7 @@ public class PlayerEditor {
   }
 
   void toggleVisible(ArmorStand armorStand) {
-    if (!getPlayer().hasPermission("asedit.invisible")) return;
+    if (!ModePermissions.permitted(EditMode.INVISIBLE, getPlayer()::hasPermission)) return;
     armorStand.setVisible(!armorStand.isVisible());
   }
 
@@ -391,19 +505,43 @@ public class PlayerEditor {
     highlight(target);
   }
 
-  ArmorStand attemptTarget(ArmorStand armorStand) {
-    if (target == null ||
-      !target.isValid() ||
-      target.getWorld() != getPlayer().getWorld() ||
-      target.getLocation().distanceSquared(getPlayer().getLocation()) > 100)
+  // Resolve without side effects so protection can be checked before editing.
+  ArmorStand selectedTarget() {
+    if (target == null || !target.isValid() ||
+        target.getWorld() != getPlayer().getWorld()) {
+      target = null;
+      targetList = null;
+      return null;
+    }
+    return target;
+  }
+
+  ArmorStand resolveTarget(ArmorStand armorStand) {
+    ArmorStand selected = selectedTarget();
+    if (selected == null || selected == armorStand) return armorStand;
+
+    // A hand-swap selection can substitute for a physically clicked stand
+    // only when their bases are essentially co-located (stacked displays).
+    // Otherwise a stale selection would make clicking AS2 silently edit AS1;
+    // this is especially confusing for per-stand toggles like No Ticking.
+    // Marker or distant targets are still explicitly editable through the
+    // GUI's Apply/Reverse on Target buttons without a physical click.
+    if (selected.getWorld() != armorStand.getWorld() ||
+        selected.getLocation().distanceSquared(armorStand.getLocation()) > 0.0625 ||
+        selected.getLocation().distanceSquared(getPlayer().getLocation()) > 100) {
       return armorStand;
-    armorStand = target;
-    highlight(armorStand);
-    return armorStand;
+    }
+    return selected;
+  }
+
+  ArmorStand attemptTarget(ArmorStand armorStand) {
+    ArmorStand selected = resolveTarget(armorStand);
+    if (target != null && selected == target) highlight(selected);
+    return selected;
   }
 
   void sendMessage(String path, String format, String option) {
-    Component message = text(plugin.getLang().getMessage(path, format, option));
+    Component message = Language.component(plugin.getLang().getMessage(path, format, option));
     if (plugin.sendToActionBar) {
       plugin.getServer().getPlayer(getUUID()).sendActionBar(message);
     } else {
@@ -416,8 +554,7 @@ public class PlayerEditor {
   }
 
   private void highlight(ArmorStand armorStand) {
-    armorStand.removePotionEffect(PotionEffectType.GLOWING);
-    armorStand.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 15, 1, false, false));
+    plugin.getHighlightControl().highlight(armorStand);
   }
 
   public PlayerEditorManager getManager() {
@@ -433,13 +570,18 @@ public class PlayerEditor {
   }
 
   public void openMenu() {
-    if (!isMenuCancelled()) {
-      plugin.getServer().getScheduler().runTaskLater(plugin, new OpenMenuTask(), 1).getTaskId();
+    // Only one next-tick open may be pending for a player at a time.
+    if (!isMenuCancelled() && pendingMenuTask == null) {
+      pendingMenuTask = plugin.getServer().getScheduler().runTaskLater(plugin, new OpenMenuTask(), 1);
     }
   }
 
   public void cancelOpenMenu() {
     lastCancelled = getManager().getTime();
+    if (pendingMenuTask != null) {
+      pendingMenuTask.cancel();
+      pendingMenuTask = null;
+    }
   }
 
   boolean isMenuCancelled() {
@@ -447,10 +589,12 @@ public class PlayerEditor {
   }
 
   private class OpenMenuTask implements Runnable {
-
     @Override
     public void run() {
-      if (isMenuCancelled()) return;
+      pendingMenuTask = null;
+      Player player = getPlayer();
+      if (player == null || !player.isOnline() ||
+          !player.hasPermission("asedit.basic") || isMenuCancelled()) return;
       chestMenu.openMenu();
     }
   }

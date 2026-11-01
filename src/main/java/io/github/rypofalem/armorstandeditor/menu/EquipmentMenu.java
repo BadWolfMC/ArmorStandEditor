@@ -6,20 +6,11 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 package io.github.rypofalem.armorstandeditor.menu;
 
 import io.github.rypofalem.armorstandeditor.PlayerEditor;
+import io.github.rypofalem.armorstandeditor.language.Language;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -30,106 +21,125 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import static net.kyori.adventure.text.Component.text;
 
 import java.util.ArrayList;
+import java.util.UUID;
 
-public class EquipmentMenu {
-  Inventory menuInv;
-  private PlayerEditor pe;
-  private ArmorStand armorstand;
-  static String name = "ArmorStand Equipment";
-  ItemStack helmet, chest, pants, feetsies, rightHand, leftHand;
 
-  public EquipmentMenu(PlayerEditor pe, ArmorStand as) {
-    this.pe = pe;
-    this.armorstand = as;
-    name = pe.plugin.getLang().getMessage("equiptitle", "menutitle");
-    menuInv = Bukkit.createInventory(pe.getManager().getEquipmentHolder(), 18, text(name));
+/**
+ * Read-only preview of an armor stand's live equipment. The six lower slots
+ * are never a container of transferable item copies: click handling cancels
+ * vanilla inventory movement and explicitly swaps with the stand instead.
+ * Gear stays on the stand until a deliberate, immediate swap is committed.
+ */
+public final class EquipmentMenu {
+  private static final int[] ITEM_SLOTS = {9, 10, 11, 12, 13, 14};
+  private final Inventory menuInv;
+  private final PlayerEditor editor;
+  private final ArmorStand stand;
+  private final UUID owner;
+
+  public EquipmentMenu(PlayerEditor editor, ArmorStand stand) {
+    this.editor = editor;
+    this.stand = stand;
+    this.owner = editor.getUUID();
+    String title = editor.plugin.getLang().getMessage("equiptitle", "menutitle");
+    menuInv = Bukkit.createInventory(editor.getManager().getEquipmentHolder(), 18, Language.component(title));
+    fillInventory();
   }
 
   private void fillInventory() {
-    menuInv.clear();
-    EntityEquipment equipment = armorstand.getEquipment();
-    assert equipment != null;
-    ItemStack helmet = equipment.getHelmet();
-    ItemStack chest = equipment.getChestplate();
-    ItemStack pants = equipment.getLeggings();
-    ItemStack feetsies = equipment.getBoots();
-    ItemStack rightHand = equipment.getItemInMainHand();
-    ItemStack leftHand = equipment.getItemInOffHand();
-    equipment.clear();
+    ItemStack disabled = new ItemStack(Material.BARRIER);
+    ItemMeta meta = disabled.getItemMeta();
+    meta.customName(Language.component(editor.plugin.getLang().getMessage("disabled", "warn")));
+    meta.getPersistentDataContainer().set(editor.plugin.getIconKey(), PersistentDataType.STRING, "ase icon");
+    disabled.setItemMeta(meta);
 
-    ItemStack disabledIcon = new ItemStack(Material.BARRIER);
-    ItemMeta meta = disabledIcon.getItemMeta();
-    meta.displayName(text(pe.plugin.getLang().getMessage("disabled", "warn"))); //equipslot.msg <option>
-    meta.getPersistentDataContainer().set(pe.plugin.getIconKey(), PersistentDataType.STRING, "ase icon"); // mark as icon
-    disabledIcon.setItemMeta(meta);
-
-    ItemStack helmetIcon = createIcon(Material.LEATHER_HELMET, "helm");
-    ItemStack chestIcon = createIcon(Material.LEATHER_CHESTPLATE, "chest");
-    ItemStack pantsIcon = createIcon(Material.LEATHER_LEGGINGS, "pants");
-    ItemStack feetsiesIcon = createIcon(Material.LEATHER_BOOTS, "boots");
-    ItemStack rightHandIcon = createIcon(Material.WOODEN_SWORD, "rhand");
-    ItemStack leftHandIcon = createIcon(Material.SHIELD, "lhand");
-    ItemStack[] items = {
-      helmetIcon,
-      chestIcon,
-      pantsIcon,
-      feetsiesIcon,
-      rightHandIcon,
-      leftHandIcon,
-      disabledIcon,
-      disabledIcon,
-      disabledIcon,
-      helmet,
-      chest,
-      pants,
-      feetsies,
-      rightHand,
-      leftHand,
-      disabledIcon,
-      disabledIcon,
-      disabledIcon
+    ItemStack[] contents = {
+      createIcon(Material.LEATHER_HELMET, "helm"),
+      createIcon(Material.LEATHER_CHESTPLATE, "chest"),
+      createIcon(Material.LEATHER_LEGGINGS, "pants"),
+      createIcon(Material.LEATHER_BOOTS, "boots"),
+      createIcon(Material.WOODEN_SWORD, "rhand"),
+      createIcon(Material.SHIELD, "lhand"),
+      disabled, disabled, disabled,
+      null, null, null, null, null, null,
+      disabled, disabled, disabled
     };
-    menuInv.setContents(items);
+    menuInv.setContents(contents);
+    refreshPreview();
   }
 
-  private ItemStack createIcon(Material mat, String slot) {
-    ItemStack icon = new ItemStack(mat);
+  private ItemStack createIcon(Material material, String slot) {
+    ItemStack icon = new ItemStack(material);
     ItemMeta meta = icon.getItemMeta();
-    meta.getPersistentDataContainer().set(pe.plugin.getIconKey(), PersistentDataType.STRING, "ase icon");
-    meta.displayName(text(pe.plugin.getLang().getMessage("equipslot", "iconname", slot))); //equipslot.msg <option>
-    ArrayList<Component> loreList = new ArrayList<>();
-    loreList.add(text(pe.plugin.getLang().getMessage("equipslot.description", "icondescription", slot))); //equioslot.description.msg <option>
-    meta.lore(loreList);
+    meta.getPersistentDataContainer().set(editor.plugin.getIconKey(), PersistentDataType.STRING, "ase icon");
+    meta.customName(Language.component(editor.plugin.getLang().getMessage("equipslot", "iconname", slot)));
+    ArrayList<Component> lore = new ArrayList<>();
+    lore.add(Language.component(editor.plugin.getLang().getMessage("equipslot.description", "icondescription", slot)));
+    meta.lore(lore);
     meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-    meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
     icon.setItemMeta(meta);
+    GuiTooltip.hideVanillaDetails(icon);
     return icon;
   }
 
+  /** Snapshot into display-only slots; no equipment is removed from the stand. */
+  public void refreshPreview() {
+    if (!stand.isValid()) return;
+    for (int slot : ITEM_SLOTS) menuInv.setItem(slot, cloneOrEmpty(getEquipment(slot)));
+  }
+
+  /**
+   * Called only for an authorized, non-cancelled LEFT/RIGHT click on a lower
+   * display slot. The manager already cancelled the vanilla inventory action.
+   * The server's current equipment is read again to avoid stale previews when
+   * multiple staff members have the same stand open.
+   */
+  public void swapWithCursor(int slot, ItemStack onCursor) {
+    ItemStack previous = cloneOrEmpty(getEquipment(slot));
+    ItemStack offered = cloneOrEmpty(onCursor);
+    setEquipment(slot, offered);
+    editor.getPlayer().setItemOnCursor(previous);
+    refreshPreview();
+  }
+
+  private ItemStack getEquipment(int slot) {
+    EntityEquipment equipment = stand.getEquipment();
+    return switch (slot) {
+      case 9 -> equipment.getHelmet();
+      case 10 -> equipment.getChestplate();
+      case 11 -> equipment.getLeggings();
+      case 12 -> equipment.getBoots();
+      case 13 -> equipment.getItemInMainHand();
+      case 14 -> equipment.getItemInOffHand();
+      default -> throw new IllegalArgumentException("Not an equipment display slot: " + slot);
+    };
+  }
+
+  private void setEquipment(int slot, ItemStack item) {
+    EntityEquipment equipment = stand.getEquipment();
+    switch (slot) {
+      case 9 -> equipment.setHelmet(item);
+      case 10 -> equipment.setChestplate(item);
+      case 11 -> equipment.setLeggings(item);
+      case 12 -> equipment.setBoots(item);
+      case 13 -> equipment.setItemInMainHand(item);
+      case 14 -> equipment.setItemInOffHand(item);
+      default -> throw new IllegalArgumentException("Not an equipment display slot: " + slot);
+    }
+  }
+
+  private static ItemStack cloneOrEmpty(ItemStack item) {
+    return item == null || item.getType().isAir() ? new ItemStack(Material.AIR) : item.clone();
+  }
+
   public void open() {
-    fillInventory();
-    pe.getPlayer().openInventory(menuInv);
+    editor.getPlayer().openInventory(menuInv);
   }
 
-  public void equipArmorstand() {
-    helmet = menuInv.getItem(9);
-    chest = menuInv.getItem(10);
-    pants = menuInv.getItem(11);
-    feetsies = menuInv.getItem(12);
-    rightHand = menuInv.getItem(13);
-    leftHand = menuInv.getItem(14);
-    armorstand.getEquipment().setHelmet(helmet);
-    armorstand.getEquipment().setChestplate(chest);
-    armorstand.getEquipment().setLeggings(pants);
-    armorstand.getEquipment().setBoots(feetsies);
-    armorstand.getEquipment().setItemInMainHand(rightHand);
-    armorstand.getEquipment().setItemInOffHand(leftHand);
-  }
-
-  public static String getName() {
-    return name;
-  }
+  public Inventory getInventory() { return menuInv; }
+  public ArmorStand getStand() { return stand; }
+  public UUID getOwner() { return owner; }
+  public static boolean isEquipmentSlot(int rawSlot) { return rawSlot >= 9 && rawSlot <= 14; }
 }

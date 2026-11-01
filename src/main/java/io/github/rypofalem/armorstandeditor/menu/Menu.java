@@ -21,12 +21,13 @@ package io.github.rypofalem.armorstandeditor.menu;
 
 import io.github.rypofalem.armorstandeditor.ArmorStandEditorPlugin;
 import io.github.rypofalem.armorstandeditor.PlayerEditor;
+import io.github.rypofalem.armorstandeditor.modes.EditMode;
+import io.github.rypofalem.armorstandeditor.modes.ModePermissions;
+import io.github.rypofalem.armorstandeditor.language.Language;
 import java.util.ArrayList;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -35,8 +36,6 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import static net.kyori.adventure.text.Component.text;
-import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public class Menu {
   private Inventory menuInv;
@@ -46,7 +45,7 @@ public class Menu {
   public Menu(PlayerEditor pe) {
     this.pe = pe;
     name = pe.plugin.getLang().getMessage("mainmenutitle", "menutitle");
-    menuInv = Bukkit.createInventory(pe.getManager().getMenuHolder(), 54, name);
+    menuInv = Bukkit.createInventory(pe.getManager().getMenuHolder(), 54, Language.component(name));
     fillInventory();
   }
 
@@ -55,8 +54,9 @@ public class Menu {
 
     ItemStack xAxis = null, yAxis = null, zAxis = null, coarseAdj = null, fineAdj = null, rotate = null, place = null, headPos = null,
       rightArmPos = null, bodyPos = null, leftArmPos = null, reset = null, showArms = null, visibility = null, size = null,
-      rightLegPos = null, equipment = null, leftLegPos = null, disableSlots = null, gravity = null, plate = null, copy = null, paste = null,
-      slot1 = null, slot2 = null, slot3 = null, slot4 = null, help = null;
+      rightLegPos = null, equipment = null, leftLegPos = null, lockEquipment = null, gravity = null, plate = null, scale = null, invulnerable = null, copy = null, paste = null,
+      slot1 = null, slot2 = null, slot3 = null, slot4 = null, help = null,
+      marker = null, noMovement = null, noTick = null, selectTarget = null, applyTarget = null, reverseTarget = null;
 
     xAxis = createIcon(new ItemStack(Material.RED_WOOL, 1),
       "xaxis", "axis x");
@@ -97,7 +97,7 @@ public class Menu {
     showArms = createIcon(new ItemStack(Material.STICK),
       "showarms", "mode showarms");
 
-    if (pe.getPlayer().hasPermission("asedit.invisible")) {
+    if (ModePermissions.permitted(EditMode.INVISIBLE, pe.getPlayer()::hasPermission)) {
       visibility = new ItemStack(Material.POTION, 1);
       PotionMeta potionMeta = (PotionMeta) visibility.getItemMeta();
       PotionEffect eff1 = new PotionEffect(PotionEffectType.INVISIBILITY, 1, 0);
@@ -109,9 +109,21 @@ public class Menu {
     size = createIcon(new ItemStack(Material.PUFFERFISH, 1),
       "size", "mode size");
 
-    if (pe.getPlayer().hasPermission("asedit.disableslots")) {
-      disableSlots = createIcon(new ItemStack(Material.BARRIER), "disableslots", "mode disableslots");
-    }
+    scale = createIcon(new ItemStack(Material.AMETHYST_SHARD),
+      "scale", "mode scale");
+
+    invulnerable = createIcon(new ItemStack(Material.TOTEM_OF_UNDYING),
+      "invulnerable", "mode invulnerable");
+
+    // Do not advertise restricted modes to players who cannot use them.
+    // This is presentation only; command and edit execution also enforce the policy.
+    lockEquipment = restrictedIcon(EditMode.LOCKEQUIPMENT, Material.TRIAL_KEY,
+      "lockequipment", "mode lockequipment");
+    marker = restrictedIcon(EditMode.MARKER, Material.ARMOR_STAND,
+      "marker", "mode marker");
+    noMovement = createIcon(new ItemStack(Material.EXPOSED_COPPER_CHAIN), "nomovement", "mode nomovement");
+    noTick = restrictedIcon(EditMode.NOTICK, Material.CLOCK,
+      "notick", "mode notick");
 
     gravity = createIcon(new ItemStack(Material.SAND), "gravity", "mode gravity");
 
@@ -146,64 +158,60 @@ public class Menu {
       "copyslot", "slot 4", "4");
 
     help = createIcon(new ItemStack(Material.NETHER_STAR), "helpgui", "help");
+    selectTarget = createIcon(new ItemStack(Material.SPYGLASS), "selecttarget", "target select");
+    applyTarget = createIcon(new ItemStack(Material.LIME_DYE), "applytarget", "target apply");
+    reverseTarget = createIcon(new ItemStack(Material.ORANGE_DYE), "reversetarget", "target reverse");
 
-    ItemStack[] items = {
-      xAxis,
-      yAxis,
-      zAxis,
-      null,
-      coarseAdj,
-      fineAdj,
-      null,
-      rotate,
-      place,
-      null,
-      headPos,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      rightArmPos,
-      bodyPos,
-      leftArmPos,
-      reset,
-      null,
-      null,
-      showArms,
-      visibility,
-      size,
-      rightLegPos,
-      equipment,
-      leftLegPos,
-      null,
-      null,
-      null,
-      null,
-      gravity,
-      plate,
-      null,
-      copy,
-      paste,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      slot1,
-      slot2,
-      slot3,
-      slot4,
-      null,
-      null,
-      null,
-      null,
-      help
-    };
+    // Position tools (top), pose controls (left), and stand properties (right).
+    // Three property rows start at 14, 23, 32; target actions move to 41-43.
+    // Size/Scale and Invulnerability/Lock Equipment remain adjacent.
+    ItemStack[] items = new ItemStack[54];
+    items[0] = xAxis;
+    items[1] = yAxis;
+    items[2] = zAxis;
+    items[4] = coarseAdj;
+    items[5] = fineAdj;
+    items[7] = rotate;
+    items[8] = place;
+
+    items[10] = headPos;
+    items[18] = rightArmPos;
+    items[19] = bodyPos;
+    items[20] = leftArmPos;
+    items[21] = reset;
+    items[27] = rightLegPos;
+    items[28] = equipment;
+    items[29] = leftLegPos;
+
+    items[14] = showArms;
+    items[15] = visibility;
+    items[16] = size;
+    items[17] = scale;
+    items[23] = invulnerable;
+    items[24] = lockEquipment;
+    items[25] = gravity;
+    items[26] = plate;
+    items[32] = marker;
+    items[33] = noMovement;
+    items[34] = noTick;
+
+    items[37] = copy;
+    items[38] = paste;
+    items[45] = slot1;
+    items[46] = slot2;
+    items[47] = slot3;
+    items[48] = slot4;
+    items[41] = selectTarget;
+    items[42] = applyTarget;
+    items[43] = reverseTarget;
+    items[53] = help;
     menuInv.setContents(items);
+  }
+
+  private ItemStack restrictedIcon(EditMode mode, Material material, String path, String command) {
+    return ModePermissions.permitted(mode, pe.getPlayer()::hasPermission)
+      ? createIcon(new ItemStack(material), path, command)
+      : null;
   }
 
   private ItemStack createIcon(ItemStack icon, String path, String command) {
@@ -213,26 +221,18 @@ public class Menu {
   private ItemStack createIcon(ItemStack icon, String path, String command, String option) {
     ItemMeta meta = icon.getItemMeta();
     meta.getPersistentDataContainer().set(ArmorStandEditorPlugin.instance().getIconKey(), PersistentDataType.STRING, "ase " + command);
-    meta.displayName(text(getIconName(path, option)));
+    meta.customName(Language.component(getIconName(path, option)));
     ArrayList < Component > loreList = new ArrayList < > ();
-    loreList.add(text(getIconDescription(path, option)));
+    loreList.add(Language.component(getIconDescription(path, option)));
     meta.lore(loreList);
     meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-    meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
     icon.setItemMeta(meta);
+    GuiTooltip.hideVanillaDetails(icon);
     return icon;
-  }
-
-  private String getIconName(String path) {
-    return getIconName(path, null);
   }
 
   private String getIconName(String path, String option) {
     return pe.plugin.getLang().getMessage(path, "iconname", option);
-  }
-
-  private String getIconDescription(String path) {
-    return getIconDescription(path, null);
   }
 
   private String getIconDescription(String path, String option) {

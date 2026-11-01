@@ -20,29 +20,36 @@
 package io.github.rypofalem.armorstandeditor;
 
 import io.github.rypofalem.armorstandeditor.menu.ASEHolder;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import io.github.rypofalem.armorstandeditor.menu.EquipmentMenu;
+import io.github.rypofalem.armorstandeditor.modes.MovementControl;
+import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Set;
+import java.util.UUID;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.FluidCollisionMode;
+import org.bukkit.World;
 import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -50,11 +57,14 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
-import static net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
 
 //Manages PlayerEditors and Player Events related to editing armorstands
 public class PlayerEditorManager implements Listener {
@@ -62,11 +72,15 @@ public class PlayerEditorManager implements Listener {
   private HashMap < UUID, PlayerEditor > players;
   private ASEHolder menuHolder = new ASEHolder(); //Inventory holder that owns the main ase menu inventories for the plugin
   private ASEHolder equipmentHolder = new ASEHolder(); //Inventory holder that owns the equipment menu
+  // Each equipment inventory is owned by one player; never commit a shared or stale view.
+  private final HashMap<UUID, EquipmentMenu> equipmentMenus = new HashMap<>();
   double coarseAdj;
   double fineAdj;
   double coarseMov;
   double fineMov;
-  private boolean ignoreNextInteract = false;
+  // Ignore only the exact synthetic event we dispatch, never another player's event.
+  private final Set<PlayerInteractAtEntityEvent> syntheticInteractions =
+      Collections.newSetFromMap(new IdentityHashMap<>());
   private TickCounter counter;
 
   PlayerEditorManager(ArmorStandEditorPlugin plugin) {
@@ -80,177 +94,252 @@ public class PlayerEditorManager implements Listener {
     Bukkit.getServer().getScheduler().runTaskTimer(plugin, counter, 0, 1);
   }
 
-  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-  void onArmorStandDamage(EntityDamageByEntityEvent event) {
-    if (!(event.getDamager() instanceof Player)) return;
-    Player player = (Player) event.getDamager();
-    if (!plugin.isEditTool(player.getInventory().getItemInMainHand())) return;
-    if (!(event.getEntity() instanceof ArmorStand)) {
-      event.setCancelled(true);
-      getPlayerEditor(player.getUniqueId()).openMenu();
-      return;
-    }
-    ArmorStand as = (ArmorStand) event.getEntity();
-    getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
-    event.setCancelled(true);
-    if (canEdit(player, as)) applyLeftTool(player, as);
+  // The declared asedit.basic permission is the editor's master gate. The old
+  // air-menu-only asedit.use check was undeclared and disagreed with commands.
+  private boolean canUseTool(Player player) {
+    return player.hasPermission("asedit.basic") &&
+        plugin.isEditTool(player.getInventory().getItemInMainHand());
   }
 
-  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-  void onArmorStandInteract(PlayerInteractAtEntityEvent event) {
-    if (ignoreNextInteract) return;
-    if (event.getHand() != EquipmentSlot.HAND) return;
+  // Invulnerable stands may never produce a damage event. Only handle these
+  // attacks early; ordinary stands continue through the Phase 2 damage handler.
+  // Cancelling here also avoids a second damage event/edit in creative mode.
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  void onInvulnerableStandAttack(PrePlayerAttackEntityEvent event) {
     Player player = event.getPlayer();
-    if (!(event.getRightClicked() instanceof ArmorStand)) return;
-    final ArmorStand as = (ArmorStand) event.getRightClicked();
+    if (!event.willAttack() || !canUseTool(player) ||
+        !(event.getAttacked() instanceof ArmorStand as) || !as.isMarkedInvulnerable()) return;
 
-    if (!canEdit(player, as)) return;
-    if (plugin.isEditTool(player.getInventory().getItemInMainHand())) {
-      getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
-      event.setCancelled(true);
+    // No unprotected fallback: the original synthetic interaction checks
+    // still gate the clicked stand AND any selected target.
+    event.setCancelled(true);
+    applyLeftTool(player, as);
+  }
+
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  void onArmorStandDamage(EntityDamageByEntityEvent event) {
+    if (!(event.getDamager() instanceof Player player) || !canUseTool(player)) return;
+    // Damage to any entity must suppress a pending air-menu task, but only
+    // armor stands are edited or have their damage event cancelled.
+    getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
+    if (!(event.getEntity() instanceof ArmorStand as)) return;
+
+    // Tool attacks should not damage stands, even when a region denies editing.
+    event.setCancelled(true);
+    applyLeftTool(player, as);
+  }
+
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  void onArmorStandInteract(PlayerInteractAtEntityEvent event) {
+    if (syntheticInteractions.contains(event) || event.getHand() != EquipmentSlot.HAND ||
+        !(event.getRightClicked() instanceof ArmorStand as)) return;
+
+    Player player = event.getPlayer();
+    if (canUseTool(player)) {
+      event.setCancelled(true); // Never use vanilla equipment manipulation as an edit.
       applyRightTool(player, as);
       return;
     }
 
-    //Attempt rename
-    if (player.getInventory().getItemInMainHand().getType() == Material.NAME_TAG && player.hasPermission("asedit.rename")) {
-      ItemStack nameTag = player.getInventory().getItemInMainHand();
-      final String name;
-      if (nameTag.getItemMeta() != null && nameTag.getItemMeta().hasDisplayName()) {
-        name = nameTag.getItemMeta().getDisplayName().replace('&', ChatColor.COLOR_CHAR);
-      } else {
-        name = null;
-      }
+    // The special formatting behavior requires both the master gate and rename.
+    // All other items (including unauthorized flint) retain vanilla interaction.
+    if (!player.hasPermission("asedit.basic") || !player.hasPermission("asedit.rename") ||
+        player.getInventory().getItemInMainHand().getType() != Material.NAME_TAG ||
+        !canEdit(player, as)) return;
 
-      if (name == null) {
-        as.setCustomName(null);
-        as.setCustomNameVisible(false);
-        event.setCancelled(true);
-      } else if (!name.equals("")) { // nametag is not blank
-        event.setCancelled(true);
+    ItemStack nameTag = player.getInventory().getItemInMainHand();
+    org.bukkit.inventory.meta.ItemMeta meta = nameTag.getItemMeta();
+    Component tagName = meta != null ? meta.customName() : null;
+    // Keep historic ampersand formatting for renamed name tags, and preserve
+    // existing legacy-styled names when translating to the entity component API.
+    final String name = tagName == null ? null :
+        LegacyComponentSerializer.legacySection().serialize(tagName).replace('&', '\u00a7');
 
-        if ((player.getGameMode() != GameMode.CREATIVE)) {
-          if (nameTag.getAmount() > 1) {
-            nameTag.setAmount(nameTag.getAmount() - 1);
-          } else {
-            nameTag = new ItemStack(Material.AIR);
-          }
-          player.getInventory().setItemInMainHand(nameTag);
+    if (name == null) {
+      as.customName(null);
+      as.setCustomNameVisible(false);
+      event.setCancelled(true);
+    } else if (!name.isEmpty()) { // nametag is not blank
+      event.setCancelled(true);
+
+      if (player.getGameMode() != GameMode.CREATIVE) {
+        if (nameTag.getAmount() > 1) {
+          nameTag.setAmount(nameTag.getAmount() - 1);
+        } else {
+          nameTag = new ItemStack(Material.AIR);
         }
-
-        //minecraft will set the name after this event even if the event is cancelled.
-        //change it 1 tick later to apply formatting without it being overwritten
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-          as.setCustomName(name);
-          as.setCustomNameVisible(true);
-        }, 1);
+        player.getInventory().setItemInMainHand(nameTag);
       }
+
+      // Minecraft may overwrite the name even if this event is cancelled.
+      Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        if (!as.isValid()) return; // Stand may be removed/unloaded before the next tick.
+        as.customName(LegacyComponentSerializer.legacySection().deserialize(name));
+        as.setCustomNameVisible(true);
+      }, 1);
     }
   }
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onSwitchHands(PlayerSwapHandItemsEvent event) {
-    if (!plugin.isEditTool(event.getOffHandItem())) return; //event assumes they are already switched
-    event.setCancelled(true);
     Player player = event.getPlayer();
-    getPlayerEditor(event.getPlayer().getUniqueId()).setTarget(getTargets(player));
+    // The event's offhand item represents the proposed post-swap state.
+    if (!player.hasPermission("asedit.basic") || !plugin.isEditTool(event.getOffHandItem())) return;
+    event.setCancelled(true);
+    selectTarget(player);
   }
 
-  private ArrayList < ArmorStand > getTargets(Player player) {
-    Location eyeLaser = player.getEyeLocation();
-    Vector direction = player.getLocation().getDirection();
-    ArrayList < ArmorStand > armorStands = new ArrayList < > ();
+  /** Cycle all stands intersecting the player's sight line, including zero-hitbox markers.
+   * Physical block occlusion is checked first; permission/protection remains authoritative.
+   */
+  public void selectTarget(Player player) {
+    if (!player.hasPermission("asedit.basic")) return;
+    getPlayerEditor(player.getUniqueId()).setTarget(getTargets(player));
+  }
 
-    final double STEPSIZE = .5;
-    final Vector STEP = direction.multiply(STEPSIZE);
-    final double RANGE = 10;
-    final double LASERRADIUS = .3;
-    List < Entity > nearbyEntities = player.getNearbyEntities(RANGE, RANGE, RANGE);
-    if (nearbyEntities.isEmpty()) return null;
+  private ArrayList<ArmorStand> getTargets(Player player) {
+    Location eye = player.getEyeLocation();
+    Vector direction = eye.getDirection().normalize();
+    final double range = 10.0;
+    final double padding = 0.35;
+    RayTraceResult block = player.getWorld().rayTraceBlocks(
+        eye, direction, range, FluidCollisionMode.NEVER, true);
+    double maxDistance = block == null ? range :
+        Math.min(range, block.getHitPosition().distance(eye.toVector()));
 
-    for (double i = 0; i < RANGE; i += STEPSIZE) {
-      List < Entity > nearby = (List < Entity > ) player.getWorld().getNearbyEntities(eyeLaser, LASERRADIUS, LASERRADIUS, LASERRADIUS);
-      if (!nearby.isEmpty()) {
-        boolean endLaser = false;
-        for (Entity e: nearby) {
-          if (e instanceof ArmorStand) {
-            if (canEdit(player, (ArmorStand) e)) {
-              armorStands.add((ArmorStand) e);
-              endLaser = true;
-            }
+    record Candidate(ArmorStand stand, double distance) {}
+    ArrayList<Candidate> candidates = new ArrayList<>();
+    // A 15x stand can extend around 30 blocks above its feet; search its
+    // base too when the player aims at the visible upper portion.
+    for (Entity entity : player.getWorld().getNearbyEntities(eye, range, range + 30, range)) {
+      if (!(entity instanceof ArmorStand stand) || !stand.isValid()) continue;
+      // The marker has no regular bounding box. Use an approximate visual
+      // column with minimum width for tiny or highly scaled stands.
+      double hit = Double.POSITIVE_INFINITY;
+      if (!stand.isMarker()) {
+        BoundingBox box = stand.getBoundingBox().expand(padding);
+        RayTraceResult intersection = box.rayTrace(eye.toVector(), direction, maxDistance);
+        if (intersection != null) hit = intersection.getHitPosition().distance(eye.toVector());
+      } else {
+        Vector base = stand.getLocation().toVector();
+        double height = stand.isSmall() ? 1.0 : 2.0;
+        org.bukkit.attribute.AttributeInstance attr =
+            stand.getAttribute(org.bukkit.attribute.Attribute.SCALE);
+        if (attr != null) height *= Math.max(0.1, attr.getValue());
+        BoundingBox visual = new BoundingBox(
+            base.getX() - 0.45, base.getY() - 0.35, base.getZ() - 0.45,
+            base.getX() + 0.45, base.getY() + height + 0.35, base.getZ() + 0.45);
+        RayTraceResult intersection = visual.rayTrace(eye.toVector(), direction, maxDistance);
+        if (intersection != null) hit = intersection.getHitPosition().distance(eye.toVector());
+      }
+      if (Double.isFinite(hit) && canEdit(player, stand)) candidates.add(new Candidate(stand, hit));
+    }
+    candidates.sort(Comparator.comparingDouble(Candidate::distance)
+        .thenComparing(c -> c.stand().getUniqueId().toString()));
+    ArrayList<ArmorStand> result = new ArrayList<>();
+    for (Candidate candidate : candidates) result.add(candidate.stand());
+    return result;
+  }
+
+  /** GUI-only action. No fake clicked entity or damage event is manufactured. */
+  public void applySelectedTarget(Player player, boolean reverse) {
+    if (!player.hasPermission("asedit.basic")) return;
+    PlayerEditor editor = getPlayerEditor(player.getUniqueId());
+    // The mode may have been selected before a permission revocation.
+    if (!editor.requireCurrentModePermission()) return;
+    ArmorStand selected = editor.selectedTarget();
+    if (selected == null || !getTargets(player).contains(selected)) {
+      editor.sendMessage("notargetinview", "warn", null);
+      return;
+    }
+    if (!canEdit(player, selected)) return;
+    editor.cancelOpenMenu();
+    if (reverse) editor.reverseEditArmorStand(selected);
+    else editor.editArmorStand(selected);
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR)
+  void onEntitiesLoad(EntitiesLoadEvent event) {
+    for (Entity entity : event.getEntities()) {
+      if (entity instanceof ArmorStand stand) {
+        MovementControl.restore(stand, plugin.getMovementKey());
+      }
+    }
+  }
+
+  /** Restore explicit freeze settings on chunks that were loaded before enable. */
+  void restoreLoadedMovement() {
+    for (World world : Bukkit.getWorlds()) {
+      for (org.bukkit.Chunk chunk : world.getLoadedChunks()) {
+        for (Entity entity : chunk.getEntities()) {
+          if (entity instanceof ArmorStand stand) {
+            MovementControl.restore(stand, plugin.getMovementKey());
           }
         }
-        if (endLaser) break;
       }
-      if (eyeLaser.getBlock().getType().isSolid()) break;
-      eyeLaser.add(STEP);
     }
-    return armorStands;
   }
 
   boolean canEdit(Player player, ArmorStand as) {
-    ignoreNextInteract = true;
-    ArrayList < Event > events = new ArrayList < > ();
-    events.add(new PlayerInteractEntityEvent(player, as, EquipmentSlot.HAND));
-    events.add(new PlayerInteractAtEntityEvent(player, as, as.getLocation().toVector(), EquipmentSlot.HAND));
-    //events.add(new PlayerArmorStandManipulateEvent(player, as, player.getEquipment().getItemInMainHand(), as.getItemInHand(), EquipmentSlot.HAND));
-    for (Event event: events) {
-      if (!(event instanceof Cancellable)) continue;
-      try {
-        plugin.getServer().getPluginManager().callEvent(event);
-      } catch (IllegalStateException ise) {
-        ise.printStackTrace();
-        ignoreNextInteract = false;
-        return false; //Something went wrong, don't allow edit just in case
-      }
-      if (((Cancellable) event).isCancelled()) {
-        ignoreNextInteract = false;
-        return false;
-      }
+    // Keep both synthetic interaction checks for protection plugins. These are
+    // synchronous: only our precise event is excluded from our own listener.
+    PlayerInteractEntityEvent interact = new PlayerInteractEntityEvent(player, as, EquipmentSlot.HAND);
+    PlayerInteractAtEntityEvent interactAt =
+        new PlayerInteractAtEntityEvent(player, as, new Vector(0, 0, 0), EquipmentSlot.HAND);
+    syntheticInteractions.add(interactAt);
+    try {
+      plugin.getServer().getPluginManager().callEvent(interact);
+      if (interact.isCancelled()) return false;
+      plugin.getServer().getPluginManager().callEvent(interactAt);
+      return !interactAt.isCancelled();
+    } catch (IllegalStateException exception) {
+      plugin.getLogger().warning("Unable to check armor stand interaction protection: " + exception.getMessage());
+      return false; // Fail closed rather than edit without the protection check.
+    } finally {
+      syntheticInteractions.remove(interactAt);
     }
-    ignoreNextInteract = false;
-    return true;
+  }
+
+  // Check both the physically clicked stand and the effective selected target.
+  // A target selected earlier must not bypass protection after permissions or
+  // region membership change, or after the player targets another stand.
+  private boolean canApplyTool(Player player, ArmorStand clicked, PlayerEditor editor) {
+    if (!canEdit(player, clicked)) return false;
+    ArmorStand selected = editor.resolveTarget(clicked);
+    return selected == clicked || canEdit(player, selected);
   }
 
   void applyLeftTool(Player player, ArmorStand as) {
-    getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
-    getPlayerEditor(player.getUniqueId()).editArmorStand(as);
+    PlayerEditor editor = getPlayerEditor(player.getUniqueId());
+    editor.cancelOpenMenu();
+    if (canApplyTool(player, as, editor)) editor.editArmorStand(as);
   }
 
   void applyRightTool(Player player, ArmorStand as) {
-    getPlayerEditor(player.getUniqueId()).cancelOpenMenu();
-    getPlayerEditor(player.getUniqueId()).reverseEditArmorStand(as);
+    PlayerEditor editor = getPlayerEditor(player.getUniqueId());
+    editor.cancelOpenMenu();
+    if (canApplyTool(player, as, editor)) editor.reverseEditArmorStand(as);
   }
 
-  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-  void onRightClickTool(PlayerInteractEvent e) {
-    if (!(e.getAction() == Action.LEFT_CLICK_AIR ||
-          e.getAction() == Action.RIGHT_CLICK_AIR ||
-          e.getAction() == Action.LEFT_CLICK_BLOCK ||
-          e.getAction() == Action.RIGHT_CLICK_BLOCK)) return;
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+  void onRightClickTool(PlayerInteractEvent event) {
+    // Only genuine air clicks open the menu; never consume any block action.
+    // Air events are often already "cancelled" by Paper's vanilla prediction.
+    if (event.getHand() != EquipmentSlot.HAND ||
+        (event.getAction() != Action.LEFT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_AIR)) return;
+    Player player = event.getPlayer();
+    if (!canUseTool(player) || event.useItemInHand() == Event.Result.DENY) return;
 
-    Player player = e.getPlayer();
-    if (!plugin.isEditTool(player.getInventory().getItemInMainHand())) return;
-
-    // Only proceed if the player is allowed to use the tool
-    if (player.hasPermission("asedit.use")) {
-        // Case 1: targeting an ArmorStand they can edit → handled elsewhere
-        Entity target = player.getTargetEntity(5);
-        if (target instanceof ArmorStand && canEdit(player, (ArmorStand) target)) {
-            // Let the other handlers take care of that interaction
-            return;
-        }
-
-        // Case 2: not targeting anything special → open the menu
-        e.setCancelled(true);
-        getPlayerEditor(player.getUniqueId()).openMenu();
-    }
+    // Air's default block-use denial is not a plugin item-use denial.
+    // Any entity hit is handled by vanilla/entity events, never by an air menu.
+    if (player.getTargetEntity(5) != null) return;
+    getPlayerEditor(player.getUniqueId()).openMenu();
   }
 
   @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
   void onScrollNCrouch(PlayerItemHeldEvent e) {
     Player player = e.getPlayer();
-    if (!player.isSneaking()) return;
+    if (!player.isSneaking() || !player.hasPermission("asedit.basic")) return;
     if (!plugin.isEditTool(player.getInventory().getItem(e.getPreviousSlot()))) return;
 
     e.setCancelled(true);
@@ -261,45 +350,153 @@ public class PlayerEditorManager implements Listener {
     }
   }
 
-  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-  void onPlayerMenuSelect(InventoryClickEvent e) {
-    if (e.getInventory().getHolder() == null) return;
-    if (!(e.getInventory().getHolder() instanceof ASEHolder)) return;
-    if (e.getInventory().getHolder() == menuHolder) {
-      e.setCancelled(true);
-      ItemStack item = e.getCurrentItem();
-      if (item != null && item.hasItemMeta()) {
-        Player player = (Player) e.getWhoClicked();
-        String command = item.getItemMeta().getPersistentDataContainer().get(plugin.getIconKey(), PersistentDataType.STRING);
-        if (command != null) {
-          player.performCommand(command);
-          return;
+  /**
+   * Equipment preview slots are NOT ordinary inventory slots: all vanilla top
+   * inventory changes are cancelled. An explicit slot swap is committed to the
+   * stand immediately, so closing a GUI can never discard equipment escrow.
+   */
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+  void onPlayerMenuSelect(InventoryClickEvent event) {
+    Inventory top = event.getView().getTopInventory();
+    if (top.getHolder() == menuHolder) {
+      boolean denied = event.isCancelled();
+      event.setCancelled(true);
+      if (!denied && event.getClickedInventory() == top &&
+          event.getWhoClicked() instanceof Player player &&
+          player.hasPermission("asedit.basic")) {
+        ItemStack item = event.getCurrentItem();
+        if (item != null && item.hasItemMeta()) {
+          String command = item.getItemMeta().getPersistentDataContainer()
+              .get(plugin.getIconKey(), PersistentDataType.STRING);
+          if ("ase target select".equals(command)) {
+            selectTarget(player);
+          } else if ("ase target apply".equals(command) ||
+              "ase target reverse".equals(command) || "ase help".equals(command) ||
+              "ase gui".equals(command)) {
+            // Applying Equipment or running Help/GUI may open or close an inventory.
+            // Paper forbids those transitions during InventoryClickEvent. Recheck
+            // the open menu and permissions when the next-tick task actually runs.
+            String deferredCommand = command;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+              if (!player.isOnline() || !player.hasPermission("asedit.basic") ||
+                  player.getOpenInventory().getTopInventory() != top) return;
+              if ("ase target apply".equals(deferredCommand)) applySelectedTarget(player, false);
+              else if ("ase target reverse".equals(deferredCommand)) applySelectedTarget(player, true);
+              else player.performCommand(deferredCommand);
+            });
+          } else if (command != null) {
+            player.performCommand(command);
+          }
         }
       }
+      return;
     }
-    if (e.getInventory().getHolder() == equipmentHolder) {
-      ItemStack item = e.getCurrentItem();
-      if (item == null) return;
-      if (item.getItemMeta() == null) return;
-      if (item.getItemMeta().getPersistentDataContainer().has(plugin.getIconKey(), PersistentDataType.STRING)) {
-        e.setCancelled(true);
+    if (top.getHolder() != equipmentHolder) return;
+
+    if (!(event.getWhoClicked() instanceof Player player)) {
+      event.setCancelled(true);
+      return;
+    }
+    EquipmentMenu menu = equipmentMenus.get(player.getUniqueId());
+    if (menu == null || menu.getInventory() != top ||
+        !menu.getOwner().equals(player.getUniqueId())) {
+      event.setCancelled(true); // A stale inventory must never release its preview items.
+      return;
+    }
+
+    if (event.getClickedInventory() != top) {
+      // Allow normal cursor management in the player's own inventory, but
+      // prevent shift-transfer, double-click collection, number-key exchange,
+      // hotbar/offhand swaps, item drops and creative cloning.
+      if (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.RIGHT) {
+        event.setCancelled(true);
       }
+      return;
     }
+
+    boolean denied = event.isCancelled();
+    event.setCancelled(true);
+    if (denied || !EquipmentMenu.isEquipmentSlot(event.getRawSlot()) ||
+        (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.RIGHT)) return;
+
+    ArmorStand stand = menu.getStand();
+    if (!canEditEquipment(player, stand)) {
+      // Close later: closing an inventory inside its click event is unsafe.
+      if (!stand.isValid()) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+          if (player.isOnline() && player.getOpenInventory().getTopInventory() == top) {
+            player.closeInventory();
+          }
+        });
+      }
+      return;
+    }
+
+    menu.swapWithCursor(event.getRawSlot(), event.getCursor());
+    for (EquipmentMenu other : equipmentMenus.values()) {
+      if (other != menu && other.getStand() == stand) other.refreshPreview();
+    }
+    player.updateInventory(); // Resync the cancelled click and the new cursor item.
   }
 
-  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-  void onPlayerMenuClose(InventoryCloseEvent e) {
-    if (e.getInventory().getHolder() == null) return;
-    if (!(e.getInventory().getHolder() instanceof ASEHolder)) return;
-    if (e.getInventory().getHolder() == equipmentHolder) {
-      PlayerEditor pe = players.get(e.getPlayer().getUniqueId());
-      pe.equipMenu.equipArmorstand();
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+  void onPlayerMenuDrag(InventoryDragEvent event) {
+    Inventory top = event.getView().getTopInventory();
+    if (top.getHolder() != equipmentHolder && top.getHolder() != menuHolder) return;
+    // Dragging over preview/icon slots can never transfer the displayed copies.
+    for (int slot : event.getRawSlots()) {
+      if (slot < top.getSize()) {
+        event.setCancelled(true);
+        return;
+      }
     }
   }
 
   @EventHandler(priority = EventPriority.MONITOR)
-  void onPlayerLogOut(PlayerQuitEvent e) {
-    removePlayerEditor(e.getPlayer().getUniqueId());
+  void onPlayerMenuClose(InventoryCloseEvent event) {
+    if (event.getInventory().getHolder() != equipmentHolder) return;
+    EquipmentMenu menu = equipmentMenus.get(event.getPlayer().getUniqueId());
+    if (menu != null && menu.getInventory() == event.getInventory()) {
+      equipmentMenus.remove(event.getPlayer().getUniqueId());
+    }
+    // No delayed commit: equipment was never cleared from the stand, and only
+    // successful, authorized cursor swaps were applied to it while open.
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR)
+  void onPlayerLogOut(PlayerQuitEvent event) {
+    UUID uuid = event.getPlayer().getUniqueId();
+    equipmentMenus.remove(uuid);
+    PlayerEditor editor = players.get(uuid);
+    if (editor != null) editor.cancelOpenMenu();
+    removePlayerEditor(uuid);
+  }
+
+  public EquipmentMenu openEquipmentMenu(PlayerEditor editor, ArmorStand stand) {
+    EquipmentMenu menu = new EquipmentMenu(editor, stand);
+    equipmentMenus.put(editor.getUUID(), menu);
+    menu.open();
+    return menu;
+  }
+
+  /** Recheck access at the time of each swap, not only when opening the GUI. */
+  private boolean canEditEquipment(Player player, ArmorStand stand) {
+    return player.hasPermission("asedit.basic") && stand.isValid() &&
+        player.getWorld() == stand.getWorld() &&
+        player.getLocation().distanceSquared(stand.getLocation()) <= 100 &&
+        canEdit(player, stand);
+  }
+
+  public void closeEditorMenus() {
+    // Do not leave pending openings or either menu type interactive after disable.
+    for (PlayerEditor editor : players.values()) editor.cancelOpenMenu();
+    for (Player player : Bukkit.getOnlinePlayers()) {
+      Inventory top = player.getOpenInventory().getTopInventory();
+      if (top.getHolder() == equipmentHolder || top.getHolder() == menuHolder) {
+        player.closeInventory();
+      }
+    }
+    equipmentMenus.clear();
   }
 
   public PlayerEditor getPlayerEditor(UUID uuid) {

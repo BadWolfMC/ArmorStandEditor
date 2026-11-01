@@ -1,0 +1,26 @@
+name: ArmorStandEditor
+main: io.github.rypofalem.armorstandeditor.ArmorStandEditorPlugin
+version: ${project.version}
+api-version: "26.3"
+website: rypofalem.github.io
+author: "RypoFalem, mercurialmusic"
+description: Allows players to edit data of armorstands without any commands.
+permissions:
+    asedit.basic:
+      description: Allow use armorstand edit functions. If set to false it will override all other functions.
+      default: op
+    asedit.invisible:
+      description: Toggle armorstand visible/invisible.
+      default: op
+    asedit.lockequipment:
+      description: Toggle armor stand equipment locks.
+      default: op
+    asedit.marker:
+      description: Toggle and paste marker armor stand state.
+      default: op
+    asedit.notick:
+      description: Toggle and paste armor stand ticking state.
+      default: op
+    asedit.rename:
+      description: Rename armorstands
+      default: op
