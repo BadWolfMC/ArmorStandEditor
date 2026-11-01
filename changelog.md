@@ -20,8 +20,16 @@ Keep entries concise and limited to work that has actually been completed.
   recently recognized editor-applied effect on switching ticking off.
   Identically matching effects from another plugin are not distinguishable
   by Bukkit's effect API; verify against any such plugins in game.
-- **Pending:** CI/CodeQL, persistence/client synchronization, permission,
-  glow and performance regressions on Paper 26.3.
+- Phase 6 targeting follow-up: fixed a stale hand-swap/GUI-selected target
+  intercepting clicks on other, separately placed armor stands. Physical
+  clicks now operate on the clicked stand unless its base is essentially
+  co-located with the selected stand (within 0.25 blocks), retaining stacked
+  stand cycling. Explicit GUI target actions remain unchanged. This resolves
+  a misleading alternating No Ticking status caused by repeated edits to the
+  same selected stand; no world-level tick configuration is accessed.
+- **Pending:** live confirmation of the targeting follow-up, persistence/client
+  synchronization, permissions, glow and performance regressions on Paper 26.3.
+  Operator reports GitHub CI green before this follow-up patch.
 
 ### Phase 5 — Targeting, Marker and No Movement (accepted 2026-10-31)
 - Added independent Marker and No Movement controls to the grouped GUI and

@@ -487,12 +487,20 @@ public class PlayerEditor {
 
   ArmorStand resolveTarget(ArmorStand armorStand) {
     ArmorStand selected = selectedTarget();
-    // Preserve the existing 10-block base-distance rule for physical clicks.
-    // GUI target actions separately use the visible ray hit distance, which
-    // allows editing the upper portion of very large scaled Marker stands.
-    return selected == null ||
-        selected.getLocation().distanceSquared(getPlayer().getLocation()) > 100
-        ? armorStand : selected;
+    if (selected == null || selected == armorStand) return armorStand;
+
+    // A hand-swap selection can substitute for a physically clicked stand
+    // only when their bases are essentially co-located (stacked displays).
+    // Otherwise a stale selection would make clicking AS2 silently edit AS1;
+    // this is especially confusing for per-stand toggles like No Ticking.
+    // Marker or distant targets are still explicitly editable through the
+    // GUI's Apply/Reverse on Target buttons without a physical click.
+    if (selected.getWorld() != armorStand.getWorld() ||
+        selected.getLocation().distanceSquared(armorStand.getLocation()) > 0.0625 ||
+        selected.getLocation().distanceSquared(getPlayer().getLocation()) > 100) {
+      return armorStand;
+    }
+    return selected;
   }
 
   ArmorStand attemptTarget(ArmorStand armorStand) {

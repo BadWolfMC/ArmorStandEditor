@@ -14,7 +14,8 @@ CI and creative/survival locking and copy/paste matrix, with no further
 regressions observed. **Phase 5 accepted on `develop` (2026-10-31):** operator reports all
 Paper live tests passed with no regressions; fixed unavailable CHAIN material
 to `EXPOSED_COPPER_CHAIN` in the supplied repository. **Phase 6 is prepared
-locally, awaiting Java 25 CI and live acceptance; Phase 7 has not started.** `main` remains stable.
+locally, with operator-reported green CI; Phase 6 live acceptance remains pending
+while a stale target-selection ambiguity is retested. Phase 7 has not started.** `main` remains stable.
 Gradle CI and CodeQL passed for Phase 1; the checksum-verified Gradle Wrapper
 JAR is present in the repository; the Gradle-built plugin loaded and basic
 editing worked on a test server. The complete release regression suite is a

@@ -325,6 +325,22 @@ separately claimed as witnessed.
 - [ ] No Ticking toggles `canTick()` per stand in Creative and Survival,
       independent of Gravity, No Movement, Marker, Scale and Invulnerability.
       Untouched stands retain their existing ticking state when plugin enables.
+- [ ] **Target isolation / Phase 6 follow-up:** select AS1 with F or the
+      Select Target GUI, then physically click different, separately placed
+      AS2 and AS3 using No Ticking. Each click changes **only the stand hit**,
+      not the previously selected AS1. Alternate AS1/AS2/AS3 and verify the
+      feedback matches each stand's state; repeat in both game modes. Use the
+      GUI's Apply/Reverse controls to deliberately edit the selected stand.
+- [ ] Place two precisely co-located/stacked stands; verify hand-swap cycling
+      can still direct a physical tool click to the selected stand, including
+      toggles and region-protection checks. Click an unrelated stand farther
+      than 0.25 blocks from that stack: only the clicked stand changes.
+- [ ] Check each stand's ticking independently via the native Paper API or
+      `data get entity` with a nearest-entity selector after deliberately
+      isolating the stand (Paper writes `Paper.CanTickOverride` for an explicit
+      setter call). Compare before/after chunk reload and restart. Do not
+      interpret an alternating status message alone as evidence of a global
+      or world-level setting change.
 - [ ] Explicit Ticking ON/OFF survives chunk unload/load and server restart;
       updating No Movement PDC does not overwrite the Paper ticking override.
 - [ ] Pose/placement/rotation, all six equipment slots in the authorized GUI,
