@@ -17,7 +17,7 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.3.build.+")
     // Only used by the command-option unit tests; not packaged with the plugin.
-    testImplementation(platform("org.junit:junit-bom:5.13.4"))
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
